@@ -34,7 +34,13 @@ Analyze `<goal>` and project context. Create a structured plan:
 
 ```bash
 ID=$(jot home create "Plan: <title>" | cut -f1)
-jot home update "$ID" markdown "---\ntags: plan, <relevant-topics>\n---\n\n# Title\n\nGoal: ...\n\n## Steps\n1. ..."
+```
+
+Use the file-based update method (see jot skill) for multiline content:
+
+```bash
+CONTENT=$(cat /tmp/plan-note.md)
+jot home update "$ID" markdown "$CONTENT"
 ```
 
 ### 3. Open Note

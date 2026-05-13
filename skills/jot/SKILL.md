@@ -85,6 +85,37 @@ jot my-jot edit abc123 '[{"oldText":"old paragraph","newText":"new paragraph"}]'
 jot my-jot edit abc123 '[{"oldText":"foo","newText":"bar"},{"oldText":"baz","newText":"qux"}]'
 ```
 
+## Multiline Content (update markdown)
+
+⚠️ Literal `\n` inside shell strings does NOT render as newlines in jot.
+
+### Primary method: write to file → cat → update
+
+Always use this for multiline content. It avoids shell escaping issues with special characters (`$`, `` ` ``, `"`, `|`, `*`):
+
+```bash
+# 1. Write content to a temp file (write tool does NOT need shell escaping)
+# 2. Read into variable via cat
+CONTENT=$(cat /tmp/note-content.md)
+
+# 3. Update the note
+jot <instance> update "$ID" markdown "$CONTENT"
+```
+
+### Short notes only: heredoc
+
+For short, simple content (1–5 lines, no special characters like backticks, pipes, or `$`), a heredoc is acceptable:
+
+```bash
+CONTENT=$(cat <<'EOF'
+A short one-liner description.
+EOF
+)
+jot <instance> update "$ID" markdown "$CONTENT"
+```
+
+Avoid heredoc for long markdown with code blocks — the shell tool may mangle special characters, resulting in a `Usage:` error (empty or corrupted argument).
+
 ## Workflow
 
 1. **Read first**: always `read` the note before editing or commenting to get the current content and thread IDs.

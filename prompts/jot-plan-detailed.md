@@ -126,7 +126,13 @@ Use the **jot** skill for all jot commands. Always include frontmatter with `tag
 
 ```bash
 ID=$(jot home create "Plan: <title>" | cut -f1)
-jot home update "$ID" markdown "---\ntags: plan/detailed, <topics>, parent-plan:<PARENT_ID>\n---\n\n<full markdown plan>"
+```
+
+Use the file-based update method (see jot skill) for multiline content:
+
+```bash
+CONTENT=$(cat /tmp/plan-detailed.md)
+jot home update "$ID" markdown "$CONTENT"
 ```
 
 ### Open Note

@@ -106,6 +106,7 @@
     renderTimer: null,
     searchTimer: null,
     layoutFrame: 0,
+    navigating: false,
     saveStatus: "Saved",
     showResolved: false,
     showComments: true,
@@ -361,6 +362,7 @@
 
     if (notesButton) {
       notesButton.addEventListener("click", () => {
+        state.navigating = true;
         window.location.href = "/";
       });
     }
@@ -437,6 +439,7 @@
             scheduleRender(refs);
           },
           onConnectionChange: (connected) => {
+            if (state.navigating) return;
             setSaveStatus(refs, connected ? "" : "Disconnected");
             const banner = document.getElementById("disconnectedBanner");
             if (banner) banner.classList.toggle("hidden", connected);

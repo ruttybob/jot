@@ -1,79 +1,46 @@
 ---
-description: "Save exploration results with diverse findings to jot"
+description: Save exploration/research results with diverse findings to jot
 argument-hint: "<exploration topic>"
 ---
 
-# Save Exploration Document
-
-<goal>
 $@
-</goal>
 
-Capture research / analysis results as a note in jot. Use the **jot** skill for all jot commands.
+Capture research findings and save to jot. Use the **jot** skill. Frontmatter: `tags: exploration, <topic-tags>`.
 
-Always include frontmatter with `tags:` — use `exploration` plus topic-specific tags (e.g. `tags: exploration, postgres, indexing`).
+**Before writing** — if scope is unclear, use `questionnaire`. Do not guess.
 
-## Before Writing
+## Verbalized Sampling
 
-If anything is unclear about the exploration scope or expected output — use the `questionnaire` tool to ask the user before composing the document. Do not guess.
-
-## Exploration Strategy (Verbalized Sampling)
-
-Research often yields multiple valid interpretations. Use Verbalized Sampling to surface diverse findings rather than converging on the first obvious answer.
-
-### Step 1. Generate Diverse Findings
-
-Generate 5 key findings about the topic. For each finding, provide:
+Generate 5 diverse findings — not just the first obvious answer. Vary angles: direct observations, second-order effects, edge cases, cross-domain parallels, non-obvious patterns.
 
 ```
 <response>
   <text>[finding description]</text>
-  <probability>[how likely this would be discovered first, 0.0–1.0]</probability>
+  <probability>[0.0–1.0]</probability>
 </response>
 ```
 
-Vary the angles: direct observations, second-order effects, edge cases, cross-domain parallels, and non-obvious patterns.
-
-### Step 2. Compose Document
-
-Structure the exploration note:
+## Note structure
 
 ```markdown
 # <topic>
 
 ## Findings
+### 1. <title> (p=<probability>)
+<description + evidence>
 
-### 1. <finding title> (p=<probability>)
-<description and evidence>
-
-### 2. <finding title> (p=<probability>)
-<description and evidence>
-
+### 2. <title> (p=<probability>)
 ...
 
 ## Conclusions
 - ...
 ```
 
-### Step 3. Create Note
+## Save to jot
 
 ```bash
-ID=$(jot home create "<topic>" | cut -f1)
-```
-
-Use the file-based update method (see jot skill) for multiline content:
-
-```bash
+ID=$(jot main create "<topic>" | cut -f1)
 CONTENT=$(cat /tmp/exploration-note.md)
-jot home update "$ID" markdown "$CONTENT"
-```
-
-### Step 4. Open Note
-
-```bash
+jot main update "$ID" markdown "$CONTENT"
 open "http://localhost:3210/notes/${ID}"
 ```
-
-Output the ID to the user. Say:
-
-> "Exploration saved to jot (ID: ${ID}). The note includes 5 diverse findings with conclusions."

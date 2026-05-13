@@ -1,146 +1,90 @@
 ---
-description: "Detailed plan with copy-paste code and commands, saved to jot"
+description: Detailed implementation plan with copy-paste code, commands, and TDD steps — save to jot
 argument-hint: "<path-to-summary-plan.md>"
 ---
 
-# Writing Implementation Plans
-
-Write comprehensive implementation plans assuming the implementer has zero context for the codebase. Document everything: which files to touch, complete code, testing commands, verification steps.
-
-**Core principle:** A good plan makes implementation obvious. If someone has to guess, the plan is incomplete.
-
-
-1. Read the original plan in full — it provides context and structure
-2. Dive into the code — read the files the plan touches
-3. Expand each task to copy-paste code level with exact commands
-
-<goal>
 $@
-</goal>
 
-## When to Use
+Write a detailed implementation plan — the implementer has zero codebase context. Expand the summary plan into copy-paste-ready tasks. Use the **jot** skill. Frontmatter: `tags: plan/detailed, <topic-tags>`. If expanding a parent plan, add `parent-plan: <parent-id>`.
 
-- Multi-step features
-- Complex refactoring
-- Anything with 3+ files or 3+ tasks
-- Before delegating to subagents
+**Before writing** — if anything is unclear, use `questionnaire`. Do not write a plan with ambiguities.
 
-## Bite-Sized Tasks
+## Task sizing
 
-**Each task = 2-5 minutes of focused work.**
+Each task = 2-5 minutes of focused work. One action per step.
 
-Every step is ONE action:
-- "Write the failing test" — step
-- "Run it to verify failure" — step
-- "Implement minimal code to pass" — step
-- "Run tests to verify pass" — step
-- "Commit" — step
+- ❌ "Build authentication system" (50 lines, 5 files)
+- ✅ "Create User model with email field" (10 lines, 1 file)
 
-**Too big:** "Build authentication system" (50 lines, 5 files)
-**Right size:** "Create User model with email field" (10 lines, 1 file)
-
-## Plan Structure
+## Plan template
 
 ````markdown
 # [Feature] Implementation Plan
 
 **Status:** ⏳ Not implemented
 **Goal:** [One sentence]
-**Architecture:** [2-3 sentences about approach]
+**Architecture:** [2-3 sentences]
 **Tech Stack:** [Key technologies]
-**Source plan:** [path to the original `/plan` file this expands on]
+**Source plan:** [path]
 
 ---
 
-### Task 1: [Descriptive Name]
+### Task 1: [Name]
 
 **Objective:** What this accomplishes
-
-**Files:**
-- Create: `exact/path/to/new_file.py`
-- Modify: `exact/path/to/existing.py`
-- Test: `tests/path/to/test_file.py`
+**Files:** Create/Modify/Test — exact paths
 
 **Step 1: Write failing test**
-
-```python
+```lang
 def test_behavior():
     result = function(input)
     assert result == expected
 ```
 
 **Step 2: Verify failure**
-
 Run: `pytest tests/path/test.py::test_behavior -v`
 Expected: FAIL
 
-**Step 3: Write minimal implementation**
-
-```python
+**Step 3: Minimal implementation**
+```lang
 def function(input):
     return expected
 ```
 
 **Step 4: Verify pass**
-
 Run: `pytest tests/path/test.py::test_behavior -v`
 Expected: PASS
 
 **Step 5: Commit**
-
 ```bash
 git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific behavior"
+git commit -m "feat: specific behavior"
 ```
 
 ---
-[next tasks...]
+[next tasks]
 ````
 
-## Writing Process
+## Workflow
 
-1. **Understand requirements** — read the user's request, design docs, constraints
-   - **If there are open questions** — you must use the `questionnaire` tool to clarify with the user before writing the plan. Do not write a plan with ambiguities.
-2. **Explore codebase** — use `bash` or `read` to understand patterns
-3. **Design approach** — architecture, file organization, dependencies, testing strategy
-4. **Write tasks** in order: setup → core (TDD each) → edge cases → integration → cleanup
-5. **Add complete details** — exact paths, complete code, exact commands, expected output
-6. **Review checklist:**
-   - [ ] Tasks sequential and logical
-   - [ ] Each task bite-sized (2-5 min)
-   - [ ] File paths exact
-   - [ ] Code complete (copy-pasteable)
-   - [ ] Commands exact with expected output
-   - [ ] No missing context
+1. Read summary plan + explore codebase
+2. Design approach (architecture, files, dependencies, testing)
+3. Write tasks in order: setup → core (TDD) → edge cases → integration → cleanup
+4. Add exact paths, complete code, exact commands, expected output
 
-## Principles
-
-- **DRY** — extract shared logic, don't copy-paste
-- **YAGNI** — implement only what's needed now
-- **TDD** — every code task: write test → verify fail → implement → verify pass
-- **Frequent commits** — commit after every task
+**Checklist before saving:**
+- [ ] Tasks sequential, logical
+- [ ] Each task bite-sized (2-5 min)
+- [ ] File paths exact
+- [ ] Code complete (copy-pasteable)
+- [ ] Commands with expected output
+- [ ] No missing context
 
 ## Save to jot
 
-Use the **jot** skill for all jot commands. Always include frontmatter with `tags:` — use `plan/detailed` plus topic-specific tags. If this plan expands a summary plan, add a `parent-plan` tag with the parent note ID for traceability.
-
 ```bash
-ID=$(jot home create "Plan: <title>" | cut -f1)
-```
-
-Use the file-based update method (see jot skill) for multiline content:
-
-```bash
+ID=$(jot main create "Plan: <title>" | cut -f1)
 CONTENT=$(cat /tmp/plan-detailed.md)
-jot home update "$ID" markdown "$CONTENT"
-```
-
-### Open Note
-
-```bash
+jot main update "$ID" markdown "$CONTENT"
 open "http://localhost:3210/notes/${ID}"
 ```
-
-Output the ID to the user. Say:
-
-> "Detailed plan saved to jot (ID: ${ID}). Ready to execute task-by-task. Use /handoff command to implement"

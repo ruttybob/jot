@@ -31,5 +31,9 @@
     "@types/ws": "^8.18.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.3"
+  },
+  "pi": {
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
   }
 }

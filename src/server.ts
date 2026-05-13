@@ -1698,8 +1698,19 @@ function sanitizeAnchor(input: unknown) {
 }
 
 function renderMarkdown(markdown: string) {
-  const rawHtml = marked.parse(markdown) as string;
-  return sanitizeHtml(rawHtml, {
+  const { data, content } = parseFrontmatter(markdown);
+
+  let frontmatterHtml = "";
+  if (Object.keys(data).length > 0) {
+    const items = Object.entries(data)
+      .filter(([, v]) => v !== undefined && v !== "")
+      .map(([k, v]) => `<span class="fm-key">${escapeHtml(k)}</span><span class="fm-val">${escapeHtml(v)}</span>`)
+      .join("\n");
+    frontmatterHtml = `<div class="frontmatter">${items}</div>\n`;
+  }
+
+  const rawHtml = marked.parse(content) as string;
+  const sanitized = sanitizeHtml(rawHtml, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       "img",
       "h1",
@@ -1718,6 +1729,7 @@ function renderMarkdown(markdown: string) {
       "td",
       "blockquote",
       "span",
+      "div",
     ]),
     allowedAttributes: {
       a: ["href", "name", "target", "rel"],
@@ -1727,14 +1739,16 @@ function renderMarkdown(markdown: string) {
     },
     allowedClasses: {
       code: ["hljs", /^language-/],
-      span: [/^hljs.*/],
+      span: [/^hljs.*$/, /^fm-/],
       pre: ["mermaid"],
+      div: ["frontmatter"],
     },
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
     },
   });
+  return frontmatterHtml + sanitized;
 }
 
 function makeShareUrl(req: Request, shareId: string) {
@@ -1751,6 +1765,23 @@ function createShortId(length = 8) {
 
 function createId(length = 12) {
   return createShortId(length);
+}
+
+function parseFrontmatter(markdown: string): { data: Record<string, string>; content: string } {
+  const match = markdown.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) return { data: {}, content: markdown };
+
+  const data: Record<string, string> = {};
+  for (const line of match[1].split('\n')) {
+    const idx = line.indexOf(':');
+    if (idx > 0) {
+      const key = line.slice(0, idx).trim();
+      const value = line.slice(idx + 1).trim();
+      data[key] = value;
+    }
+  }
+
+  return { data, content: match[2] || '' };
 }
 
 function escapeHtml(input: string) {

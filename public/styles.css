@@ -319,6 +319,10 @@ input:focus, textarea:focus { border-color: var(--muted); }
 .markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 0.55rem 0.7rem; text-align: left; }
 .markdown-body a { color: var(--blue); }
 .markdown-body img { max-width: 100%; height: auto; }
+.markdown-body .frontmatter { margin: 0 0 1rem; padding: 0.6rem 0.9rem; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); font-size: 0.85rem; line-height: 1.7; display: flex; flex-wrap: wrap; gap: 0.15rem 1.2rem; }
+.markdown-body .frontmatter .fm-key { color: var(--muted); font-weight: 500; }
+.markdown-body .frontmatter .fm-val { color: var(--text); }
+.markdown-body .frontmatter .fm-key::after { content: ":"; margin-right: 0.3rem; }
 
 /* Mermaid diagrams */
 .mermaid-wrap { position: relative; margin: 0 0 1rem; overflow: hidden; border: 1px solid var(--code-border); border-radius: 14px; background: var(--code-bg); user-select: none; }

@@ -1,11 +1,11 @@
 ---
-description: Structured multi-perspective discussion with Verbalized Sampling — save to jot
+description: Structured multi-perspective discussion with Verbalized Sampling
 argument-hint: "<discussion topic>"
 ---
 
 $@
 
-Run a multi-perspective discussion and save to jot. Use the **jot** skill. Frontmatter: `tags: discussion, <topic-tags>`.
+Run a multi-perspective discussion on the topic.
 
 **Before writing** — if context is unclear, use `questionnaire`. Do not guess.
 
@@ -22,7 +22,7 @@ Generate 5 distinct perspectives to avoid mode collapse. Vary angles: mainstream
 
 For each perspective — evidence, blind spots, interactions with others.
 
-## Note structure
+## Output
 
 ```markdown
 # Discussion: <topic>
@@ -40,11 +40,4 @@ For each perspective — evidence, blind spots, interactions with others.
 - **Next steps:** ...
 ```
 
-## Save to jot
-
-```bash
-ID=$(jot main create "Discussion: <topic>" | cut -f1)
-CONTENT=$(cat /tmp/discussion-note.md)
-jot main update "$ID" markdown "$CONTENT"
-open "http://localhost:3210/notes/${ID}"
-```
+Respond directly — do not save to jot.

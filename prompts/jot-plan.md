@@ -23,7 +23,8 @@ Create a structured summary plan and save to jot. Use the **jot** skill for all 
 ID=$(jot main create "Plan: <title>" | cut -f1)
 CONTENT=$(cat /tmp/plan-note.md)
 jot main update "$ID" markdown "$CONTENT"
-open "http://localhost:3210/notes/${ID}"
+SHARE_URL=$(jot main share "$ID" comment | cut -f3)
+open "$SHARE_URL"
 ```
 
 Output the ID: `Plan saved to jot (ID: ${ID}).`

@@ -47,5 +47,6 @@ Generate 5 problem diagnoses from different angles. Include at least 1-2 low-pro
 ID=$(jot main create "Refactor: <title>" | cut -f1)
 CONTENT=$(cat /tmp/refactor-plan.md)
 jot main update "$ID" markdown "$CONTENT"
-open "http://localhost:3210/notes/${ID}"
+SHARE_URL=$(jot main share "$ID" comment | cut -f3)
+open "$SHARE_URL"
 ```

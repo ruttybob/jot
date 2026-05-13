@@ -19,5 +19,6 @@ Free-form — no mandatory structure. Title + body: thoughts, ideas, reflections
 ID=$(jot self create "<title>" | cut -f1)
 CONTENT=$(cat /tmp/personal-note.md)
 jot self update "$ID" markdown "$CONTENT"
-open "http://localhost:3211/notes/${ID}"
+SHARE_URL=$(jot self share "$ID" comment | cut -f3)
+open "$SHARE_URL"
 ```

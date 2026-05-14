@@ -11,11 +11,17 @@
 
 ### Added
 
+- Custom favicon: сервер автоматически подхватывает `favicon.svg`, `favicon.png` или `favicon.ico` из data-директории
+- CLI: флаг `--description` для `jot register`, описание выводится в `jot instances`
 - Промпт jot-self-note для сохранения личных заметок в self-инстанс (порт 3211)
 - Отображение frontmatter (YAML-шапки) в заметках — парсинг и стилизованный вывод ключей/значений
 - Промпты для pi: jot-plan, jot-plan-detailed, jot-explore, jot-discuss — создание планов, исследований и обсуждений с сохранением в jot
 - Промпт jot-modernize для модернизации кода
 - Skill для интеграции jot CLI с pi
+
+### Removed
+
+- Промпт jot-discuss удалён (больше не используется)
 
 ### Changed
 

@@ -63,6 +63,7 @@ The instance owner creates API keys from the settings gear on the landing page. 
 
 ```bash
 jot register myserver https://jot.example.com <api-key>
+jot register myserver https://jot.example.com <api-key> --description="Production notes"
 jot myserver list
 jot myserver search "query"
 jot myserver read <note-id>
@@ -77,6 +78,13 @@ jot myserver delete-comment <note-id> <message-id>
 jot myserver delete-thread <note-id> <thread-id>
 jot myserver update <note-id> title "New title"
 jot myserver delete <note-id>
+```
+
+Use `--description` to label instances. Descriptions appear in `jot instances` output and are stored in `~/.config/jot/settings.json`.
+
+```bash
+jot instances
+# myserver  https://jot.example.com  Production notes
 ```
 
 ### Shared mode
@@ -106,6 +114,17 @@ data/
 ```
 
 The `.md` files are derived from the collaborative editing state stored in the `.json` sidecar. The JSON is the source of truth. The markdown files are written for convenience (grep, backup, external tooling).
+
+### Custom favicon
+
+Place `favicon.ico`, `favicon.png`, or `favicon.svg` in the data directory. The server detects it at startup and serves it automatically. SVG is preferred for crisp rendering at all sizes.
+
+Recommended generators: [favicon.io](https://favicon.io/), [RealFaviconGenerator.net](https://realfavicongenerator.net/)
+
+```bash
+data/
+  favicon.svg   # detected and served as /favicon.svg
+```
 
 ## HTTP API
 

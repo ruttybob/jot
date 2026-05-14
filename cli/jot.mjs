@@ -96,15 +96,23 @@ if (command === "register") {
   if (!name || !urlOrBase) {
     console.error("Usage: jot register <name> <baseUrl> <token>");
     console.error("       jot register <name> <shareUrl>");
+    console.error("Options: --description=<text>  Instance description (up to 100 chars)");
     process.exit(1);
   }
 
+  const descArg = args.find((a) => a.startsWith("--description="));
+  const description = descArg ? descArg.slice("--description=".length).slice(0, 100) : undefined;
+
   const config = loadConfig();
+  const existing = config.instances.find((i) => i.name === name);
   config.instances = config.instances.filter((i) => i.name !== name);
 
   const shareMatch = urlOrBase.match(/^(https?:\/\/.+)\/s\/([a-z0-9]+)$/i);
   if (shareMatch) {
-    config.instances.push({ name, baseUrl: shareMatch[1], shareId: shareMatch[2] });
+    const instance = { name, baseUrl: shareMatch[1], shareId: shareMatch[2] };
+    if (description !== undefined) instance.description = description;
+    else if (existing?.description) instance.description = existing.description;
+    config.instances.push(instance);
     saveConfig(config);
     console.log(`Registered shared instance "${name}" at ${shareMatch[1]}`);
   } else {
@@ -112,7 +120,10 @@ if (command === "register") {
       console.error("Usage: jot register <name> <baseUrl> <token>");
       process.exit(1);
     }
-    config.instances.push({ name, baseUrl: urlOrBase, token });
+    const instance = { name, baseUrl: urlOrBase, token };
+    if (description !== undefined) instance.description = description;
+    else if (existing?.description) instance.description = existing.description;
+    config.instances.push(instance);
     saveConfig(config);
     console.log(`Registered instance "${name}" at ${urlOrBase}`);
   }
@@ -145,7 +156,8 @@ if (command === "instances") {
     console.log("No registered instances.");
   } else {
     for (const instance of config.instances) {
-      console.log(`${instance.name}  ${instance.baseUrl}`);
+      const desc = instance.description ? `  ${instance.description}` : "";
+      console.log(`${instance.name}  ${instance.baseUrl}${desc}`);
     }
   }
   process.exit(0);
@@ -514,6 +526,7 @@ Server:
 Instance management:
   jot register <name> <baseUrl> <token>   Register with API key (owner)
   jot register <name> <shareUrl>          Register with share link
+    --description=<text>                   Set instance description (up to 100 chars)
   jot unregister <name>                   Remove a registered instance
   jot instances                           List registered instances
 

@@ -160,6 +160,9 @@ marked.setOptions({
 });
 
 ensureDirectories();
+
+const faviconInfo = detectFavicon();
+
 loadNotesIntoMemory();
 
 const app = express();
@@ -168,6 +171,14 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use("/static", express.static(publicDir));
 app.use("/static/mermaid", express.static(path.join(path.resolve(__dirname, ".."), "node_modules", "mermaid", "dist")));
+
+// Serve favicon from dataDir
+if (faviconInfo) {
+  const faviconData = fs.readFileSync(faviconInfo.path);
+  app.get(faviconInfo.route, (_req, res) => {
+    res.type(faviconInfo.contentType).send(faviconData);
+  });
+}
 
 app.get("/health", (_req, res) => {
   res.type("text/plain").send("ok");
@@ -1377,6 +1388,21 @@ function ensureDirectories() {
   fs.mkdirSync(notesDir, { recursive: true });
 }
 
+function detectFavicon(): { path: string; route: string; contentType: string; linkAttrs: string } | null {
+  const candidates: Array<{ ext: string; contentType: string; linkAttrs: string }> = [
+    { ext: ".svg", contentType: "image/svg+xml", linkAttrs: ` type="image/svg+xml"` },
+    { ext: ".png", contentType: "image/png", linkAttrs: ` sizes="32x32"` },
+    { ext: ".ico", contentType: "image/x-icon", linkAttrs: ` sizes="32x32"` },
+  ];
+  for (const c of candidates) {
+    const filePath = path.join(dataDir, `favicon${c.ext}`);
+    if (fs.existsSync(filePath)) {
+      return { path: filePath, route: `/favicon${c.ext}`, contentType: c.contentType, linkAttrs: c.linkAttrs };
+    }
+  }
+  return null;
+}
+
 function loadNotesIntoMemory() {
   notes.clear();
   const files = fs.readdirSync(notesDir).filter((file) => file.endsWith(".md"));
@@ -2133,6 +2159,7 @@ function renderSimplePage(title: string, body: string) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
+    ${faviconInfo ? `<link rel="icon"${faviconInfo.linkAttrs} href="${faviconInfo.route}" />` : ""}
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="/static/theme.js"></script>
   </head>
@@ -2156,6 +2183,7 @@ function renderAuthPage(mode: "login" | "setup") {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
+    ${faviconInfo ? `<link rel="icon"${faviconInfo.linkAttrs} href="${faviconInfo.route}" />` : ""}
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="/static/theme.js"></script>
   </head>
@@ -2204,6 +2232,7 @@ function renderAppShell(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
+    ${faviconInfo ? `<link rel="icon"${faviconInfo.linkAttrs} href="${faviconInfo.route}" />` : ""}
     <link rel="stylesheet" href="/static/styles.css" />
     <script src="/static/theme.js"></script>
   </head>

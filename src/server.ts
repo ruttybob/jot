@@ -69,6 +69,7 @@ type NoteMetaFile = {
   threads: CommentThread[];
   collab?: SavedCollabState;
   collabState?: SavedCollabState;
+  archived?: boolean;
 };
 
 type NoteRecord = {
@@ -82,6 +83,7 @@ type NoteRecord = {
   markdown: string;
   collab: CollabState;
   clientAcks: Map<string, number>;
+  archived: boolean;
 };
 
 type NoteSummary = {
@@ -90,6 +92,7 @@ type NoteSummary = {
   updatedAt: string;
   shareId: string;
   snippet: string;
+  archived: boolean;
 };
 
 type DeviceToken = {
@@ -130,6 +133,7 @@ const port = Number(cliArg("port") || process.env.PORT || 3210);
 const dataDir = cliArg("data") || process.env.DATA_DIR || path.join(process.cwd(), "data");
 const notesDir = path.join(dataDir, "notes");
 const authFilePath = path.join(dataDir, "auth.json");
+const commentersFilePath = path.join(dataDir, "commenters.json");
 const publicDir = path.join(path.resolve(__dirname, ".."), "public");
 const ownerSessionCookieName = "md_owner_session";
 const ownerLocalStorageTokenKey = "md_owner_token";
@@ -172,7 +176,7 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use("/static", express.static(publicDir));
 app.use("/static/mermaid", express.static(path.join(path.resolve(__dirname, ".."), "node_modules", "mermaid", "dist")));
 
-// Serve favicon from dataDir
+// Serve favicon from dataDir (cached at startup — changes on disk require restart)
 if (faviconInfo) {
   const faviconData = fs.readFileSync(faviconInfo.path);
   app.get(faviconInfo.route, (_req, res) => {
@@ -588,7 +592,9 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
 
 app.get("/api/notes", requireOwnerApi, (req, res) => {
   const query = String(req.query.q || "");
-  const results = searchNotes(query);
+  const archived = String(req.query.archived || "");
+  // archived: "true" = только архивные, "any" = все, ""/"false" = только активные
+  const results = searchNotes(query, archived ? { archived } : undefined);
   res.json({ ok: true, notes: results });
 });
 
@@ -643,18 +649,22 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   const titleProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "title");
   const markdownProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "markdown");
   const shareAccessProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "shareAccess");
+  const archivedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "archived");
   const nextTitle = titleProvided ? normalizeTitle(String(req.body.title || note.title)) : note.title;
   const nextMarkdown = markdownProvided ? String(req.body.markdown || "") : note.markdown;
   const nextShareAccess = shareAccessProvided && ["none", "view", "comment", "edit"].includes(req.body.shareAccess)
     ? (req.body.shareAccess as ShareAccess)
     : note.shareAccess;
+  const nextArchived = archivedProvided ? Boolean(req.body.archived) : note.archived;
   const titleChanged = nextTitle !== note.title;
   const markdownChanged = nextMarkdown !== note.markdown;
 
   const shareAccessChanged = nextShareAccess !== note.shareAccess;
+  const archivedChanged = nextArchived !== note.archived;
 
   note.title = nextTitle;
   note.shareAccess = nextShareAccess;
+  note.archived = nextArchived;
   if (markdownChanged) {
     note.collab = collabFromMarkdown(nextMarkdown, note.collab.serverCounter + 1);
     note.markdown = nextMarkdown;
@@ -664,11 +674,11 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   if (shareAccessChanged) {
     enforceShareAccessForConnections(note);
   }
-  if (titleChanged || markdownChanged || shareAccessChanged) {
+  if (titleChanged || markdownChanged || shareAccessChanged || archivedChanged) {
     broadcastEditorHello(note);
     broadcastNoteUpdate(note);
   }
-  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess });
+  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess, archived: note.archived });
 });
 
 app.get("/api/notes/:id/collab", requireOwnerApi, (req, res) => {
@@ -849,6 +859,10 @@ app.post("/api/share/:shareId/identity", (req, res) => {
 
   const commenterId = getOrCreateCommenterId(req, res);
   setCommenterNameCookie(req, res, name);
+  // Сохраняем имя в persist-хранилище для восстановления между сессиями
+  if (commenterId) {
+    saveCommenterName(commenterId, name);
+  }
   res.json({
     ok: true,
     commenterIdSet: Boolean(commenterId),
@@ -1449,6 +1463,7 @@ function loadNotesIntoMemory() {
       threads,
       collab,
       clientAcks: new Map(),
+      archived: meta.archived ?? false,
     });
   }
 }
@@ -1473,6 +1488,34 @@ function writeJson(filePath: string, value: unknown) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+// --- Хранилище имён комментаторов (persist, in-memory cache) ---
+type CommenterRecord = { name: string; updatedAt: string };
+type CommenterStore = Record<string, CommenterRecord>;
+
+let commenterStoreCache: CommenterStore | null = null;
+
+function loadCommenterStore(): CommenterStore {
+  if (!commenterStoreCache) {
+    commenterStoreCache = readJson<CommenterStore>(commentersFilePath, {});
+  }
+  return commenterStoreCache;
+}
+
+function flushCommenterStore(store: CommenterStore) {
+  writeJson(commentersFilePath, store);
+}
+
+function saveCommenterName(commenterId: string, name: string) {
+  const store = loadCommenterStore();
+  store[commenterId] = { name, updatedAt: nowIso() };
+  flushCommenterStore(store);
+}
+
+function loadCommenterName(commenterId: string): string | null {
+  const store = loadCommenterStore();
+  return store[commenterId]?.name || null;
+}
+
 function createNote() {
   const timestamp = nowIso();
   const id = createShortId();
@@ -1487,6 +1530,7 @@ function createNote() {
     threads: [],
     collab: newCollabState(),
     clientAcks: new Map(),
+    archived: false,
   };
 
   notes.set(id, note);
@@ -1506,6 +1550,7 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
     updatedAt: note.updatedAt,
     threads: note.threads,
     collab: saveCollabState(note.collab),
+    archived: note.archived,
   };
 
   fs.writeFileSync(noteMarkdownPath(note.id), note.markdown, "utf8");
@@ -1515,9 +1560,16 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
   }
 }
 
-function searchNotes(query: string) {
+function searchNotes(query: string, options?: { archived?: string }) {
   const needle = query.trim().toLowerCase();
+  const archivedParam = options?.archived || "false";
   return Array.from(notes.values())
+    .filter((note) => {
+      // Фильтрация по статусу архивации
+      if (archivedParam === "true") return note.archived;
+      if (archivedParam === "any") return true;
+      return !note.archived; // по умолчанию — только активные
+    })
     .map((note) => summarizeNote(note, needle))
     .filter((note) => {
       if (!needle) {
@@ -1536,6 +1588,7 @@ function summarizeNote(note: NoteRecord, needle: string): NoteSummary {
     updatedAt: note.updatedAt,
     shareId: note.shareId,
     snippet: buildSnippet(note, needle),
+    archived: note.archived,
   };
 }
 
@@ -1585,9 +1638,12 @@ function buildViewerInfo(
   overrides?: { commenterNameOverride?: string; hasCommenterIdentityOverride?: boolean },
 ): ViewerInfo {
   const commenter = getCommenterIdentity(req);
+  // Восстановление имени из persist-хранилища, если cookie пустой, но commenterId найден
+  const restoredName = (!commenter.name && commenter.id) ? loadCommenterName(commenter.id) : null;
+  const resolvedName = overrides?.commenterNameOverride ?? commenter.name ?? restoredName;
   return {
     isOwner: isOwnerAuthenticated(req),
-    commenterName: overrides?.commenterNameOverride ?? commenter.name,
+    commenterName: resolvedName,
     hasCommenterIdentity: overrides?.hasCommenterIdentityOverride ?? Boolean(commenter.id),
   };
 }

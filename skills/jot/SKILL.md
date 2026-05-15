@@ -21,14 +21,19 @@ jot <instance> list  # verify
 
 ```bash
 # Notes
-jot <inst> list                                    # list all notes
-jot <inst> search "query"                          # search notes
+jot <inst> list                                    # list active notes (default)
+jot <inst> list --archived                         # list archived only
+jot <inst> list --archived=any                     # list all (active + archived)
+jot <inst> search "query"                          # search active notes
+jot <inst> search "query" --archived               # search archived only
 jot <inst> read <id>                               # read note (markdown + thread/message IDs)
 jot <inst> create "Title"                          # create note → returns id
 jot <inst> edit <id> '[{"oldText":"…","newText":"…"}]'  # precise replacements (same as edit tool)
 jot <inst> update <id> title "New title"           # update metadata
 jot <inst> update <id> markdown "$CONTENT"         # update body (see multiline below)
 jot <inst> delete <id>
+jot <inst> archive <id>                            # move to archive
+jot <inst> unarchive <id>                          # restore from archive
 
 # Threads
 jot <inst> comment <id> "quoted text" "body"       # new thread (quote must match note exactly)
@@ -67,3 +72,4 @@ EOF
 3. **Comment on specifics** — quoted text must exactly match a span in the note.
 4. **Resolve threads** — always `resolve` when the question is answered or decision is final.
 5. **Verify** — `read` again after `edit` or `comment` to confirm.
+6. **Archive completed** — `archive` notes that are no longer active to keep the list clean.

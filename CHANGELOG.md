@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Архивация заметок: статус `archived`, табы Active/Archive в UI, команды CLI `archive`/`unarchive`, иконки архива
+- Persist имён комментаторов между сессиями (commenters.json), кнопка "change" для смены имени
+
 ### Changed
 
 - Промпты переименованы: убран префикс `jot-`, `explore` → `explain`

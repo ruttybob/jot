@@ -40,9 +40,9 @@ One paragraph — what this is and why it matters.
 ## Save to jot
 
 ```bash
-ID=$(jot main create "Explain: <title>" | cut -f1)
+ID=$(jot self create "Explain: <title>" | cut -f1)
 CONTENT=$(cat /tmp/explain-note.md)
-jot main update "$ID" markdown "$CONTENT"
-SHARE_URL=$(jot main share "$ID" comment | cut -f3)
+jot self update "$ID" markdown "$CONTENT"
+SHARE_URL=$(jot self share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```

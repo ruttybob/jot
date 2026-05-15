@@ -400,6 +400,7 @@
       commentFab,
       previewFab,
       previewCloseButton,
+      backToEditButton: document.getElementById("backToEditButton"),
     };
 
     if (notesButton) {
@@ -420,6 +421,21 @@
       shareButton.addEventListener("click", (e) => {
         e.stopPropagation();
         toggleSharePopover(refs);
+      });
+    }
+
+    const viewCommentButton = document.getElementById("viewCommentButton");
+    if (viewCommentButton) {
+      viewCommentButton.addEventListener("click", async () => {
+        if (!state.note) return;
+        const access = state.note.shareAccess;
+        if (access !== "comment" && access !== "edit") {
+          await api(`/api/notes/${noteId}`, {
+            method: "PUT",
+            body: { shareAccess: "comment" },
+          });
+        }
+        window.location.href = `/s/${state.note.shareId}`;
       });
     }
 
@@ -659,6 +675,23 @@
       const payload = await api(endpoint);
       applyNotePayload(payload, refs, isPublic);
 
+      // Owner on shared page: auto-identity + show back button
+      if (payload.viewer.isOwner) {
+        if (!payload.viewer.commenterName) {
+          await api(`/api/share/${state.note.shareId}/identity`, {
+            method: "POST",
+            body: { name: "Owner" },
+          });
+          state.viewer = { ...state.viewer, commenterName: "Owner", hasCommenterIdentity: true };
+          if (refs.commenterLabel) refs.commenterLabel.textContent = "Owner";
+        }
+        if (refs.backToEditButton) {
+          refs.backToEditButton.classList.remove("hidden");
+          refs.backToEditButton.addEventListener("click", () => {
+            window.location.href = `/notes/${state.note.id}`;
+          });
+        }
+      }
       if (isPublicEdit) {
         if (!payload.viewer.isOwner && !payload.viewer.commenterName) {
           await openIdentityModalAsync(refs);
@@ -831,6 +864,7 @@
               <jot-icon-button icon="share" label="Share" id="shareButton"></jot-icon-button>
               <div class="share-popover hidden" id="sharePopover"></div>
             </div>
+            <jot-icon-button icon="message" label="View &amp; Comment" id="viewCommentButton"></jot-icon-button>
             <button type="button" class="jot-btn-icon jot-btn-icon--md theme-toggle" aria-label="Toggle theme">${themeIcon(document.documentElement.getAttribute("data-theme") || "dark")}</button>
           </div>
         </header>
@@ -875,6 +909,7 @@
       <div class="app-root">
         <header class="topbar public-page-topbar">
           <div class="topbar-left">
+            <jot-icon-button icon="edit" label="Back to editor" id="backToEditButton" class="hidden"></jot-icon-button>
             <div>
               <div class="topbar-title" id="topbarTitle">note</div>
               ${subtitle}
@@ -906,6 +941,7 @@
       <div class="app-root">
         <header class="topbar public-page-topbar">
           <div class="topbar-left">
+            <jot-icon-button icon="edit" label="Back to editor" id="backToEditButton" class="hidden"></jot-icon-button>
             <div>
               <div class="topbar-title" id="topbarTitle">note</div>
               <div class="topbar-title-subtle">editing as <span id="commenterLabel">anonymous</span> <button type="button" class="text-button change-name-btn" id="changeNameBtn">change</button></div>

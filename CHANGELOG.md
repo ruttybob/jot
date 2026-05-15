@@ -6,6 +6,8 @@
 
 - Архивация заметок: статус `archived`, табы Active/Archive в UI, команды CLI `archive`/`unarchive`, иконки архива
 - Persist имён комментаторов между сессиями (commenters.json), кнопка "change" для смены имени
+- Кнопка «Back to editor» на shared-странице для owner; авто-identity «Owner» без модального окна
+- Кнопка «View & Comment» в topbar редактора: переход в режим просмотра с комментированием (shared-страница, та же вкладка)
 
 ### Changed
 

@@ -8,6 +8,7 @@ $@
 Save a personal note to the **self** instance (port 3211, data in `~/Documents/self-notes`). Use instance name `self` for all jot commands. Use the **jot** skill. Frontmatter: `tags: personal, <topic-tags>`.
 
 **Before writing** — if unclear what to capture, use `questionnaire`. Do not guess.
+If subagents are available — use them proactively for research and context gathering.
 
 ## Note
 

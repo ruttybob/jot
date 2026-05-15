@@ -7,7 +7,8 @@ $@
 
 Write a detailed implementation plan — the implementer has zero codebase context. Expand the summary plan into copy-paste-ready tasks. Use the **jot** skill. Frontmatter: `tags: plan/detailed, <topic-tags>`. If expanding a parent plan, add `parent-plan: <parent-id>`.
 
-**Before writing** — if anything is unclear, use `questionnaire`. Do not write a plan with ambiguities.
+**Before writing** — if anything is unclear, use `ask_user_question`. Do not write a plan with ambiguities.
+If subagents are available — use them proactively for codebase exploration and parallel task analysis.
 
 ## Task sizing
 
@@ -82,10 +83,26 @@ git commit -m "feat: specific behavior"
 
 ## Save to jot
 
+**Before saving — check for existing plan.** Search jot for a note with the same topic. If found, **update** it instead of creating a new one.
+
 ```bash
-ID=$(jot main create "Plan: <title>" | cut -f1)
-CONTENT=$(cat /tmp/plan-detailed.md)
-jot main update "$ID" markdown "$CONTENT"
+# 1. Search for existing plan by topic keywords
+EXISTING=$(jot main search "<topic keywords>" | head -5)
+
+# 2. If a matching plan found (title contains topic):
+#    Update existing note
+ID="<existing-id>"
+jot main update "$ID" title "Plan/Detailed: <title>"
+jot main update "$ID" markdown "$(cat /tmp/plan-detailed.md)"
+
+# 3. If no match found:
+#    Create new note
+ID=$(jot main create "Plan/Detailed: <title>" | cut -f1)
+jot main update "$ID" markdown "$(cat /tmp/plan-detailed.md)"
+
+# 4. Share & open
 SHARE_URL=$(jot main share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```
+
+Output the ID: `Detailed plan saved to jot (ID: ${ID}, updated/create).`

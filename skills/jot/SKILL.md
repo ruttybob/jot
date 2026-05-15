@@ -11,118 +11,59 @@ All jot notes, titles, and content must be in **Russian** (unless the topic itse
 
 ## Prerequisites
 
-The `jot` CLI must be installed and a server registered:
-
 ```bash
 jot register <instance> https://jot.example.com <api-key>
-# or for shared access:
-jot register <instance> https://jot.example.com/s/<share-id>
+jot instances    # verify
+jot <instance> list  # verify
 ```
-1. Verify: `jot instances`
-2. Verify: `jot <instance> list`
 
 ## Commands
 
-### Notes
-
 ```bash
-# List all notes
-jot <instance> list
+# Notes
+jot <inst> list                                    # list all notes
+jot <inst> search "query"                          # search notes
+jot <inst> read <id>                               # read note (markdown + thread/message IDs)
+jot <inst> create "Title"                          # create note → returns id
+jot <inst> edit <id> '[{"oldText":"…","newText":"…"}]'  # precise replacements (same as edit tool)
+jot <inst> update <id> title "New title"           # update metadata
+jot <inst> update <id> markdown "$CONTENT"         # update body (see multiline below)
+jot <inst> delete <id>
 
-# Search notes
-jot <instance> search "query"
+# Threads
+jot <inst> comment <id> "quoted text" "body"       # new thread (quote must match note exactly)
+jot <inst> reply <id> <tid> <mid> "body"           # reply in thread
+jot <inst> resolve <id> <tid>                      # ✅ always resolve when done
+jot <inst> reopen <id> <tid>                       # reopen if needed
+jot <inst> delete-thread <id> <tid>                # delete thread entirely
 
-# Read a note (markdown body + thread/message IDs)
-jot <instance> read <note-id>
-
-# Create a new note
-jot <instance> create "Note title"
-
-# Edit a note — array of precise replacements
-jot <instance> edit <note-id> '[{"oldText":"...","newText":"..."}]'
-
-# Update note metadata (title)
-jot <instance> update <note-id> title "New title"
-
-# Delete a note
-jot <instance> delete <note-id>
+# Comments
+jot <inst> edit-comment <id> <mid> "new body"
+jot <inst> delete-comment <id> <mid>
 ```
 
-### Comments & Threads
+## Multiline Content
+
+⚠️ Literal `\n` in shell strings does NOT work. Always write to file first:
 
 ```bash
-# Comment on quoted text in a note
-jot <instance> comment <note-id> "quoted text" "comment body"
-
-# Reply to a specific message in a thread
-jot <instance> reply <note-id> <thread-id> <message-id> "reply body"
-
-# Edit a comment
-jot <instance> edit-comment <note-id> <message-id> "new body"
-
-# Delete a comment
-jot <instance> delete-comment <note-id> <message-id>
-
-# Resolve a thread
-jot <instance> resolve <note-id> <thread-id>
-
-# Reopen a thread
-jot <instance> reopen <note-id> <thread-id>
-
-# Delete a thread
-jot <instance> delete-thread <note-id> <thread-id>
-```
-
-## Editing Notes
-
-The `edit` command takes a JSON array of replacement objects. Each object has:
-- `oldText` — exact text to find in the note (must be unique)
-- `newText` — replacement text
-
-This is the same semantics as the `edit` tool: precise, non-overlapping replacements.
-
-```bash
-# Single replacement
-jot my-jot edit abc123 '[{"oldText":"old paragraph","newText":"new paragraph"}]'
-
-# Multiple replacements in one call
-jot my-jot edit abc123 '[{"oldText":"foo","newText":"bar"},{"oldText":"baz","newText":"qux"}]'
-```
-
-## Multiline Content (update markdown)
-
-⚠️ Literal `\n` inside shell strings does NOT render as newlines in jot.
-
-### Primary method: write to file → cat → update
-
-Always use this for multiline content. It avoids shell escaping issues with special characters (`$`, `` ` ``, `"`, `|`, `*`):
-
-```bash
-# 1. Write content to a temp file (write tool does NOT need shell escaping)
-# 2. Read into variable via cat
 CONTENT=$(cat /tmp/note-content.md)
-
-# 3. Update the note
-jot <instance> update "$ID" markdown "$CONTENT"
+jot <inst> update "$ID" markdown "$CONTENT"
 ```
 
-### Short notes only: heredoc
-
-For short, simple content (1–5 lines, no special characters like backticks, pipes, or `$`), a heredoc is acceptable:
+Heredoc is OK for short content (1–5 lines, no backticks/pipes/`$`):
 
 ```bash
 CONTENT=$(cat <<'EOF'
-A short one-liner description.
+Short text here.
 EOF
 )
-jot <instance> update "$ID" markdown "$CONTENT"
 ```
-
-Avoid heredoc for long markdown with code blocks — the shell tool may mangle special characters, resulting in a `Usage:` error (empty or corrupted argument).
 
 ## Workflow
 
-1. **Read first**: always `read` the note before editing or commenting to get the current content and thread IDs.
-2. **Edit precisely**: use the smallest unique `oldText` that identifies the target. Avoid large surrounding context.
-3. **Comment on specifics**: the quoted text in `comment` must exactly match a span in the note.
-4. **Verify**: after `edit` or `comment`, `read` the note again to confirm the change.
+1. **Read first** — `read` before editing/commenting to get current content and IDs.
+2. **Edit precisely** — smallest unique `oldText`, no large surrounding context.
+3. **Comment on specifics** — quoted text must exactly match a span in the note.
+4. **Resolve threads** — always `resolve` when the question is answered or decision is final.
+5. **Verify** — `read` again after `edit` or `comment` to confirm.

@@ -8,6 +8,7 @@ $@
 Analyze the codebase, create a modernization plan, save to jot. Use the **jot** skill. Frontmatter: `tags: plan, refactor, modernize, <topic-tags>`.
 
 **Before writing** — if scope or constraints are unclear, use `questionnaire`. Do not guess.
+If subagents are available — use them proactively for codebase analysis and parallel diagnostics.
 
 ## Rules
 

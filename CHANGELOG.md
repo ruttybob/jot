@@ -14,6 +14,7 @@
 - Промпты переименованы: убран префикс `jot-`, `explore` → `explain`
 - Промпты обновлены: делегирование subagents, `ask_user_question`, дедупликация планов
 - SKILL.md сжат и упрощён (команды, multiline, workflow)
+- Промпты plan и plan-detailed: добавлено указание языка (русский) и guardrail «Plan only» (без реализации)
 
 ### Fixed
 

@@ -3,12 +3,18 @@ description: Create a summary plan and save to jot
 argument-hint: "<task description>"
 ---
 
+## Language
+
+- Russian: all plan content, notes, comments, and jot entries must be written in Russian.
+
 $@
 
 Create a structured summary plan and save to jot. Use the **jot** skill for all jot commands. Frontmatter: `tags: plan, <topic-tags>`.
 
 **Before writing** — if scope or approach is unclear, use `ask_user_question`. Do not guess.
 If subagents are available — use them proactively for research and planning.
+
+**Important:** Plan only. Do not start implementation, do not create files, do not write code. Save the plan to jot and stop.
 
 ## Plan structure
 

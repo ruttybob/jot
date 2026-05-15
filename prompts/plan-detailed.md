@@ -3,12 +3,18 @@ description: Detailed implementation plan with copy-paste code, commands, and TD
 argument-hint: "<path-to-summary-plan.md>"
 ---
 
+## Language
+
+- Russian: all plan content, notes, comments, and jot entries must be written in Russian.
+
 $@
 
 Write a detailed implementation plan — the implementer has zero codebase context. Expand the summary plan into copy-paste-ready tasks. Use the **jot** skill. Frontmatter: `tags: plan/detailed, <topic-tags>`. If expanding a parent plan, add `parent-plan: <parent-id>`.
 
 **Before writing** — if anything is unclear, use `ask_user_question`. Do not write a plan with ambiguities.
 If subagents are available — use them proactively for codebase exploration and parallel task analysis.
+
+**Important:** Plan only. Do not start implementation, do not create files, do not write real code. Save the detailed plan to jot and stop. Code in the template is an example for the future implementer, not for immediate execution.
 
 ## Task sizing
 

@@ -1169,6 +1169,7 @@
       item.card.style.top = `${top}px`;
       cursor = top + item.card.offsetHeight + 12;
     }
+    refs.threadRail.style.minHeight = `${cursor + 20}px`;
   }
 
   function renderThreadCard(thread) {

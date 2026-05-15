@@ -5,6 +5,10 @@ description: >
   edit, comment, reply, or manage notes and threads via the jot CLI. Notes, writes
 ---
 
+## Language
+
+All jot notes, titles, and content must be in **Russian** (unless the topic itself is in English).
+
 ## Prerequisites
 
 The `jot` CLI must be installed and a server registered:

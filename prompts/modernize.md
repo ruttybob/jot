@@ -44,10 +44,15 @@ Generate 5 problem diagnoses from different angles. Include at least 1-2 low-pro
 
 ## Save to jot
 
+Write plan to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
+
 ```bash
+cat > /tmp/refactor-plan.md << 'EOF'
+<plan content here>
+EOF
+
 ID=$(jot main create "Refactor: <title>" | cut -f1)
-CONTENT=$(cat /tmp/refactor-plan.md)
-jot main update "$ID" markdown "$CONTENT"
+jot main update "$ID" markdown "$(cat /tmp/refactor-plan.md)"
 SHARE_URL=$(jot main share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```

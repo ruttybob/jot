@@ -26,10 +26,15 @@ If subagents are available — use them proactively for research and planning.
 
 ## Save to jot
 
+Write plan to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
+
 ```bash
+cat > /tmp/plan-note.md << 'PLAN_EOF'
+<plan content here>
+PLAN_EOF
+
 ID=$(jot main create "Plan: <title>" | cut -f1)
-CONTENT=$(cat /tmp/plan-note.md)
-jot main update "$ID" markdown "$CONTENT"
+jot main update "$ID" markdown "$(cat /tmp/plan-note.md)"
 SHARE_URL=$(jot main share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```

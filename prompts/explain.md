@@ -39,10 +39,15 @@ One paragraph — what this is and why it matters.
 
 ## Save to jot
 
+Write note to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
+
 ```bash
+cat > /tmp/explain-note.md << 'EOF'
+<note content here>
+EOF
+
 ID=$(jot self create "Explain: <title>" | cut -f1)
-CONTENT=$(cat /tmp/explain-note.md)
-jot self update "$ID" markdown "$CONTENT"
+jot self update "$ID" markdown "$(cat /tmp/explain-note.md)"
 SHARE_URL=$(jot self share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```

@@ -91,7 +91,13 @@ git commit -m "feat: specific behavior"
 
 **Before saving — check for existing plan.** Search jot for a note with the same topic. If found, **update** it instead of creating a new one.
 
+Write plan to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
+
 ```bash
+cat > /tmp/plan-detailed.md << 'PLAN_EOF'
+<plan content here>
+PLAN_EOF
+
 # 1. Search for existing plan by topic keywords
 EXISTING=$(jot main search "<topic keywords>" | head -5)
 

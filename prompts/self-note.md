@@ -16,9 +16,14 @@ Free-form — no mandatory structure. Title + body: thoughts, ideas, reflections
 
 ## Save to jot
 
+Write note to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
+
 ```bash
+cat > /tmp/personal-note.md << 'EOF'
+<note content here>
+EOF
+
 ID=$(jot self create "<title>" | cut -f1)
-CONTENT=$(cat /tmp/personal-note.md)
-jot self update "$ID" markdown "$CONTENT"
+jot self update "$ID" markdown "$(cat /tmp/personal-note.md)"
 open "http://localhost:3211/notes/${ID}"
 ```

@@ -8,6 +8,10 @@
 
 - Промпты (plan, plan-detailed, explain, modernize, self-note): heredoc во временный файл + `$(cat /tmp/file)` вместо инлайна большого контента в shell-команды
 
+### Chore
+
+- Добавлен `.pi/` в .gitignore
+
 - Архивация заметок: статус `archived`, табы Active/Archive в UI, команды CLI `archive`/`unarchive`, иконки архива
 - Persist имён комментаторов между сессиями (commenters.json), кнопка "change" для смены имени
 - Кнопка «Back to editor» на shared-странице для owner; авто-identity «Owner» без модального окна

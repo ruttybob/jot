@@ -27,6 +27,7 @@ jot <inst> list --archived=any                     # list all (active + archived
 jot <inst> search "query"                          # search active notes
 jot <inst> search "query" --archived               # search archived only
 jot <inst> read <id>                               # read note (markdown + thread/message IDs)
+jot <inst> read-threads <id>                          # read only comments (no note body, minimal context)
 jot <inst> create "Title"                          # create note → returns id
 jot <inst> edit <id> '[{"oldText":"…","newText":"…"}]'  # precise replacements (same as edit tool)
 jot <inst> update <id> title "New title"           # update metadata
@@ -68,6 +69,7 @@ EOF
 ## Workflow
 
 1. **Read first** — `read` before editing/commenting to get current content and IDs.
+   Use `read-threads` instead when you only need thread/message IDs (e.g., before `reply`, `resolve`, `edit-comment`). This avoids loading the full note body into context.
 2. **Edit precisely** — smallest unique `oldText`, no large surrounding context.
 3. **Comment on specifics** — quoted text must exactly match a span in the note.
 4. **Resolve threads** — always `resolve` when the question is answered or decision is final.

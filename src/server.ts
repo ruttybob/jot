@@ -699,6 +699,22 @@ app.get("/api/notes/:id/collab", requireOwnerApi, (req, res) => {
   });
 });
 
+app.get("/api/notes/:id/threads", requireOwnerApi, (req, res) => {
+  const note = notes.get(String(req.params.id));
+  if (!note) {
+    res.status(404).json({ ok: false, error: "Note not found." });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    noteId: note.id,
+    title: note.title,
+    updatedAt: note.updatedAt,
+    threads: serializeThreads(note, req),
+  });
+});
+
 app.get("/api/share/:shareId/collab", (req, res) => {
   const note = requireShareAccess(req, res, "edit");
   if (!note) return;

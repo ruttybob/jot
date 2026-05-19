@@ -342,6 +342,34 @@ switch (subCommand) {
     break;
   }
 
+  case "read-threads": {
+    const rtNoteId = args[2];
+    if (!rtNoteId) {
+      console.error("Usage: jot <instance> read-threads <id>");
+      process.exit(1);
+    }
+
+    const rtPayload = await request(instance, "GET", `/api/notes/${rtNoteId}/threads`);
+    console.log(`# ${rtPayload.title}`);
+    console.log(`# id: ${rtPayload.noteId}`);
+    console.log(`# updated: ${rtPayload.updatedAt}`);
+
+    if (rtPayload.threads && rtPayload.threads.length > 0) {
+      for (const thread of rtPayload.threads) {
+        const anchor = thread.anchor?.quote ? `"${thread.anchor.quote.slice(0, 60)}"` : "(no anchor)";
+        console.log();
+        console.log(`Thread ${thread.id} on ${anchor}${thread.resolved ? " [resolved]" : ""}`);
+        for (const msg of thread.messages) {
+          console.log(`  [${msg.id}] ${msg.authorName} (${msg.updatedAt}): ${msg.body}`);
+        }
+      }
+    } else {
+      console.log();
+      console.log("(no comments)");
+    }
+    break;
+  }
+
   case "create": {
     const title = args.slice(2).join(" ") || "untitled";
     const payload = await request(instance, "POST", "/api/notes");
@@ -565,6 +593,7 @@ Owner commands:
   jot <instance> list [--archived]        List notes (active by default, --archived for archived)
   jot <instance> search <query> [--archived] Search notes
   jot <instance> read <id>                Read a note with comments
+  jot <instance> read-threads <id>         Read only comments (no note body)
   jot <instance> create [title]           Create a new note
   jot <instance> share <id> [access]      Get/set share access (none|view|comment|edit)
   jot <instance> comment <id> <quote> <b> Comment on quoted text

@@ -9,7 +9,7 @@ argument-hint: "<path-to-summary-plan.md>"
 
 $@
 
-Write a detailed implementation plan — the implementer has zero codebase context. Expand the summary plan into copy-paste-ready tasks. Use the **jot** skill. Frontmatter: `tags: plan/detailed, <topic-tags>`. If expanding a parent plan, add `parent-plan: <parent-id>`.
+Write a detailed implementation plan — the implementer has zero codebase context. Expand the summary plan into copy-paste-ready tasks. Frontmatter: `tags: plan/detailed, <topic-tags>`. If expanding a parent plan, add `parent-plan: <parent-id>`.
 
 **Before writing** — if anything is unclear, use `ask_user_question`. Do not write a plan with ambiguities.
 If subagents are available — use them proactively for codebase exploration and parallel task analysis.
@@ -90,6 +90,7 @@ git commit -m "feat: specific behavior"
 
 **Before saving — check for existing plan.** Search jot for a note with the same topic. If found, **update** it instead of creating a new one.
 
+Read the **jot** skill before executing any jot commands. The skill contains the full command reference and workflow details.
 Write plan to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
 
 ```bash

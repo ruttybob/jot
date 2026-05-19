@@ -5,7 +5,7 @@ argument-hint: "<codebase or target>"
 
 $@
 
-Analyze the codebase, create a modernization plan, save to jot. Use the **jot** skill. Frontmatter: `tags: plan, refactor, modernize, <topic-tags>`.
+Analyze the codebase, create a modernization plan, save to jot. Frontmatter: `tags: plan, refactor, modernize, <topic-tags>`.
 
 **Before writing** — if scope or constraints are unclear, use `questionnaire`. Do not guess.
 If subagents are available — use them proactively for codebase analysis and parallel diagnostics.
@@ -44,6 +44,7 @@ Generate 5 problem diagnoses from different angles. Include at least 1-2 low-pro
 
 ## Save to jot
 
+Read the **jot** skill before executing any jot commands. The skill contains the full command reference and workflow details.
 Write plan to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
 
 ```bash

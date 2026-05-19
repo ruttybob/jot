@@ -5,7 +5,7 @@ argument-hint: "<topic or path to explain>"
 
 $@
 
-Explain the given topic and save a clear, structured write-up to jot. Use the **jot** skill. Frontmatter: `tags: explain, <topic-tags>`.
+Explain the given topic and save a clear, structured write-up to jot. Frontmatter: `tags: explain, <topic-tags>`.
 
 **Before writing** — if the question is ambiguous, use `questionnaire`. Do not guess.
 If subagents are available — use them proactively: `web-search` for internet research, `code-search` for docs/codebase lookup, `scout` for fast recon. Delegate freely to parallelise.
@@ -39,6 +39,7 @@ One paragraph — what this is and why it matters.
 
 ## Save to jot
 
+Read the **jot** skill before executing any jot commands. The skill contains the full command reference and workflow details.
 Write note to a temp file first, then pass via `$(cat /tmp/file)`. Never inline large content directly into shell commands.
 
 ```bash

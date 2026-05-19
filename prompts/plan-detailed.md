@@ -28,7 +28,6 @@ Each task = 2-5 minutes of focused work. One action per step.
 ````markdown
 # [Feature] Implementation Plan
 
-**Status:** ⏳ Not implemented
 **Goal:** [One sentence]
 **Architecture:** [2-3 sentences]
 **Tech Stack:** [Key technologies]

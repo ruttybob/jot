@@ -1,5 +1,5 @@
 ---
-description: Review comments on the plan just created in this session, reply, wait for approval, then resolve and update
+description: Review comments on the note just created in this session, reply, wait for approval, then resolve and update
 argument-hint: "<note-id>"
 ---
 
@@ -10,7 +10,7 @@ $@
 - Russian: all replies, edits, and comments in Russian.
 
 
-`jot main read <id>` — read the plan + unresolved threads.
+`jot main read <id>` — read the note + unresolved threads.
 
 For each unresolved thread:
 - `reply` with an answer or proposed change
@@ -19,6 +19,6 @@ For each unresolved thread:
 
 After user confirms:
 - `resolve` the thread
-- `edit` the plan if this thread requires changes
+- `edit` the note if this thread requires changes
 
-No confirmation — don't resolve, don't touch the plan.
+No confirmation — don't resolve, don't touch the note.

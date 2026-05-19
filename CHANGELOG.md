@@ -9,6 +9,8 @@
 ### Changed
 
 - Промпты (plan, plan-detailed, explain, modernize, self-note): heredoc во временный файл + `$(cat /tmp/file)` вместо инлайна большого контента в shell-команды
+- Промпт sync-jot: обобщена формулировка с «plan» на «note»
+- Промпт plan-detailed: убрано поле Status ⏳ Not implemented
 
 ### Chore
 

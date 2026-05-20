@@ -1,13 +1,13 @@
 ---
-description: Save a personal note, idea, or reflection to jot self-instance (port 3211)
+description: Save a personal note, idea, or reflection to jot self-instance
 argument-hint: "<note topic>"
 ---
 
 $@
 
-Save a personal note to the **self** instance (port 3211, data in `~/Documents/self-notes`). Use instance name `self` for all jot commands. Frontmatter: `tags: personal, <topic-tags>`.
+Save a personal note to the **self** instance. Use instance name `self` for all jot commands. Frontmatter: `tags: personal, <topic-tags>`.
 
-**Before writing** — if unclear what to capture, use `questionnaire`. Do not guess.
+**Before writing** — if unclear what to capture, use `ask_user_question`. Do not guess.
 If subagents are available — use them proactively for research and context gathering.
 
 ## Note

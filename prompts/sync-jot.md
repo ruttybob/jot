@@ -1,24 +1,20 @@
 ---
-description: Review comments on the note just created in this session, reply, wait for approval, then resolve and update
-argument-hint: "<note-id>"
+description: Read note threads, propose replies, wait for confirmation, then resolve and apply edits
+argument-hint: 
 ---
 
-$@
-
-## Language
-
-- Russian: all replies, edits, and comments in Russian.
+$1
 
 
-`jot main read <id>` — read the note + unresolved threads.
+Instance name is `$1`. Read the **jot** skill before starting.
 
-For each unresolved thread:
-- `reply` with an answer or proposed change
-- Tell the user what you replied / proposed
-- **Wait** for user to confirm
+## Workflow
 
-After user confirms:
-- `resolve` the thread
-- `edit` the note if this thread requires changes
+- `jot $1 read <id>` — read note + unresolved threads
+- For each unresolved thread: `reply` with a proposed change, tell the user what you proposed, **wait for confirmation**
+- After confirmation: `resolve` the thread, `edit` the note if the thread requires changes
 
-No confirmation — don't resolve, don't touch the note.
+## Rules
+
+- No confirmation → don't resolve, don't edit
+- All replies and edits in Russian

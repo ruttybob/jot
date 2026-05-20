@@ -50,9 +50,14 @@ jot <inst> delete-comment <id> <mid>
 
 ## Multiline Content
 
-⚠️ Literal `\n` in shell strings does NOT work. Always write to file first:
+⚠️ **Literal `\n` in shell strings does NOT work** — it produces the two characters `\` and `n`, not a line break. This applies to **all commands**: `update`, `reply`, `comment`, etc.
+
+Always write to file first:
 
 ```bash
+cat > /tmp/note-content.md << 'EOF'
+<content here>
+EOF
 CONTENT=$(cat /tmp/note-content.md)
 jot <inst> update "$ID" markdown "$CONTENT"
 ```

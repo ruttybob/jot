@@ -370,7 +370,6 @@
 
     if (changeNameBtn) {
       changeNameBtn.addEventListener("click", () => {
-        if (state.viewer?.isOwner) return;
         openIdentityModal(refs, false);
       });
     }

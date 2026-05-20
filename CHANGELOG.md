@@ -12,6 +12,7 @@
 - Промпт sync-jot: обобщена формулировка с «plan» на «note»
 - Промпт plan-detailed: убрано поле Status ⏳ Not implemented
 - Промпты (explain, modernize, plan, plan-detailed, self-note): навык jot читается только перед сохранением, а не в начале работы
+- Кнопка change имени комментатора теперь доступна и для owner (раньше блокировалась)
 - Промпт sync-jot: упрощён — убраны лишние строки, команда `read` заменена на `read-threads`
 
 ### Chore

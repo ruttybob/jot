@@ -2,6 +2,7 @@
 description: Read note threads, propose replies, wait for confirmation, then resolve and apply edits
 argument-hint: 
 ---
+$@
 
 - `jot $1 read-threads <id>` — read unresolved threads
 - For each unresolved thread: `reply` with a proposed change, tell the user what you proposed, **wait for confirmation**

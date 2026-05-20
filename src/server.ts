@@ -433,21 +433,30 @@ app.post("/api/notes/:id/threads", requireOwnerApi, (req, res) => {
     return;
   }
 
-  const start = note.markdown.indexOf(quote);
+  // Search for quote in rendered plain text (matches what the web UI sees in the DOM)
+  const plainText = markdownToPlainText(note.markdown);
+  // Strip markdown syntax from quote too, so ### Heading matches rendered text
+  const strippedQuote = stripHtmlTags(marked.parse(quote) as string);
+  let start = plainText.indexOf(strippedQuote);
+  const resolvedQuote = strippedQuote;
   if (start === -1) {
-    res.status(400).json({ ok: false, error: "Quoted text not found in note." });
-    return;
+    // Fallback: try raw quote in plain text
+    start = plainText.indexOf(quote);
+    if (start === -1) {
+      res.status(400).json({ ok: false, error: "Quoted text not found in note." });
+      return;
+    }
   }
 
-  const prefix = note.markdown.slice(Math.max(0, start - 32), start);
-  const end = start + quote.length;
-  const suffix = note.markdown.slice(end, end + 32);
+  const prefix = plainText.slice(Math.max(0, start - 32), start);
+  const end = start + resolvedQuote.length;
+  const suffix = plainText.slice(end, end + 32);
 
   const bearer = getBearerToken(req);
   const apiKeyLabel = bearer ? getApiKeyLabel(bearer) : null;
   const authorName = apiKeyLabel || "Owner";
 
-  const anchor: CommentAnchor = { quote, prefix, suffix, start, end };
+  const anchor: CommentAnchor = { quote: resolvedQuote, prefix, suffix, start, end };
   const thread: CommentThread = {
     id: createId(10),
     resolved: false,
@@ -1482,6 +1491,32 @@ function loadNotesIntoMemory() {
       archived: meta.archived ?? false,
     });
   }
+
+  // Migrate thread anchors: strip markdown syntax from quote and recompute positions
+  // based on rendered plain text (matches what the web UI sees in the DOM)
+  for (const [, note] of notes) {
+    let dirty = false;
+    const plainText = markdownToPlainText(note.markdown);
+    for (const thread of note.threads) {
+      const anchor = thread.anchor;
+      if (!anchor || !anchor.quote) continue;
+      // Check if current quote is findable in plain text
+      if (plainText.indexOf(anchor.quote) !== -1) continue;
+      // Try stripping markdown syntax from quote
+      const strippedQuote = stripHtmlTags(marked.parse(anchor.quote) as string);
+      const start = plainText.indexOf(strippedQuote);
+      if (start === -1) continue;
+      anchor.quote = strippedQuote;
+      anchor.start = start;
+      anchor.end = start + strippedQuote.length;
+      anchor.prefix = plainText.slice(Math.max(0, start - 32), start);
+      anchor.suffix = plainText.slice(anchor.end, anchor.end + 32);
+      dirty = true;
+    }
+    if (dirty) {
+      persistNote(note, false);
+    }
+  }
 }
 
 function noteMarkdownPath(id: string) {
@@ -1847,6 +1882,20 @@ function renderMarkdown(markdown: string) {
     },
   });
   return frontmatterHtml + sanitized;
+}
+
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function markdownToPlainText(markdown: string): string {
+  return stripHtmlTags(renderMarkdown(markdown));
 }
 
 function makeShareUrl(req: Request, shareId: string) {

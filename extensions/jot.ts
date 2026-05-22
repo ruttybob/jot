@@ -155,11 +155,11 @@ export default function jotExtension(pi: ExtensionAPI) {
           return;
         }
 
-        // Upload body via temp file (safe for multiline content)
+        // Upload body via temp file + variable (pipe/stdin not supported by jot CLI)
         const tmpFile = `/tmp/jot-pi-${noteId}.md`;
         writeFileSync(tmpFile, content, "utf-8");
         try {
-          execSync(`cat '${tmpFile}' | jot ${instanceName} update ${noteId} markdown -`, {
+          execSync(`CONTENT=$(cat '${tmpFile}') && jot ${instanceName} update ${noteId} markdown "$CONTENT"`, {
             encoding: "utf-8",
             timeout: 15000,
           });

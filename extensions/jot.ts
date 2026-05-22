@@ -12,10 +12,9 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { resolve, basename } from "node:path";
+import { resolve, basename, dirname, relative } from "node:path";
 
 const CUSTOM_TYPE_INSTANCE = "jot-selected-instance";
-const CUSTOM_TYPE_PUBLISHED = "jot-published";
 
 interface JotInstance {
   name: string;
@@ -56,21 +55,6 @@ function restoreInstance(ctx: { sessionManager: any }): string | undefined {
       entry.data?.instance
     ) {
       return entry.data.instance;
-    }
-  }
-  return undefined;
-}
-
-/** Check if a file was already published to the given instance. */
-function isAlreadyPublished(entries: any[], absPath: string, instanceName: string): string | undefined {
-  for (const entry of entries) {
-    if (
-      entry.type === "custom" &&
-      entry.customType === CUSTOM_TYPE_PUBLISHED &&
-      entry.data?.absPath === absPath &&
-      entry.data?.instance === instanceName
-    ) {
-      return entry.data.noteId;
     }
   }
   return undefined;
@@ -126,20 +110,14 @@ export default function jotExtension(pi: ExtensionAPI) {
         return;
       }
 
-      // Duplicate guard
-      const existingId = isAlreadyPublished(ctx.sessionManager.getEntries(), absPath, instanceName);
-      if (existingId) {
-        ctx.ui.notify(`Already published to ${instanceName} as ${existingId}. Skipping.`, "warning");
-        return;
-      }
-
       const content = readFileSync(absPath, "utf-8");
 
-      // Derive title: first # heading or filename
-      const headingMatch = content.match(/^#\s+(.+)$/m);
-      const title = headingMatch
-        ? headingMatch[1].trim()
-        : basename(absPath).replace(/\.[^.]+$/, "");
+      // Title: directory/filename-hh:mm
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const relDir = dirname(relative(ctx.cwd, absPath));
+      const fileBase = basename(absPath);
+      const title = relDir && relDir !== "." ? `${relDir}/${fileBase}-${time}` : `${fileBase}-${time}`;
 
       // Create note
       try {
@@ -172,17 +150,9 @@ export default function jotExtension(pi: ExtensionAPI) {
           "info",
         );
 
-        // Persist publication record to prevent duplicates
-        pi.appendEntry(CUSTOM_TYPE_PUBLISHED, {
-          absPath,
-          instance: instanceName,
-          noteId,
-          title,
-        });
-
         // Send chat message (no LLM turn)
         pi.sendMessage({
-          customType: CUSTOM_TYPE_PUBLISHED,
+          customType: "jot-published",
           content: `Published \`${filePath}\` → jot **${instanceName}** / ${noteId} ("${title}")`,
           display: true,
           details: { absPath, instance: instanceName, noteId, title },

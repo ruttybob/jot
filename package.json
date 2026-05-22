@@ -34,6 +34,7 @@
   },
   "pi": {
     "skills": ["./skills"],
-    "prompts": ["./prompts"]
+    "prompts": ["./prompts"],
+    "extensions": ["./extensions"]
   }
 }

@@ -10,9 +10,10 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { resolve, basename, dirname, relative } from "node:path";
+import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { resolve, basename, dirname, relative, join } from "node:path";
 
 const CUSTOM_TYPE_INSTANCE = "jot-selected-instance";
 
@@ -87,6 +88,55 @@ export default function jotExtension(pi: ExtensionAPI) {
   // ── /jot-public <path> — create note from file ───────────────────
   pi.registerCommand("jot-public", {
     description: "Create a jot note from a file in the selected instance: /jot-public <path>",
+    getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
+      // Resolve the directory part and the partial filename
+      const cwd = process.cwd();
+      const expanded = prefix.startsWith("~") ? prefix.replace("~", process.env.HOME || "~") : prefix;
+      const absPrefix = expanded.startsWith("/") ? expanded : join(cwd, expanded);
+
+      let dir: string;
+      let partial: string;
+      try {
+        const s = statSync(absPrefix);
+        if (s.isDirectory()) {
+          dir = absPrefix;
+          partial = "";
+        } else {
+          dir = dirname(absPrefix);
+          partial = basename(absPrefix);
+        }
+      } catch {
+        dir = dirname(absPrefix);
+        partial = basename(absPrefix);
+      }
+
+      let entries: string[];
+      try {
+        entries = readdirSync(dir);
+      } catch {
+        return null;
+      }
+
+      const hidden = partial.startsWith(".");
+      const filtered = entries
+        .filter((e) => (hidden || !e.startsWith(".")) && e.toLowerCase().startsWith(partial.toLowerCase()))
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 30);
+
+      if (filtered.length === 0) return null;
+
+      return filtered.map((name) => {
+        const fullPath = join(dir, name);
+        const isDir = statSync(fullPath).isDirectory();
+        const relPath = relative(cwd, fullPath);
+        const display = relPath.startsWith("..") ? fullPath : relPath;
+        return {
+          value: isDir ? display + "/" : display,
+          label: isDir ? name + "/" : name,
+          description: isDir ? undefined : relative(cwd, dir) || ".",
+        };
+      });
+    },
     handler: async (args, ctx) => {
       const filePath = args.trim();
       if (!filePath) {

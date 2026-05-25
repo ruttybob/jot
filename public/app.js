@@ -639,7 +639,12 @@
 
       if (!button && card) {
         const threadId = card.dataset.threadId;
-        activateThread(threadId, refs, true);
+        if (card.classList.contains("thread-card-orphaned")) {
+          activateThread(threadId, refs, false);
+          openThreadDialog(threadId, refs, isPublic);
+        } else {
+          activateThread(threadId, refs, true);
+        }
         return;
       }
 

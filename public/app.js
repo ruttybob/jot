@@ -1184,6 +1184,7 @@
 
     const canvasRect = refs.previewCanvas.getBoundingClientRect();
     const visible = [];
+    const orphaned = [];
 
     for (const thread of state.threads) {
       if (thread.resolved && !state.showResolved) {
@@ -1191,6 +1192,7 @@
       }
       const match = locateAnchor(thread.anchor, refs.previewContent);
       if (!match) {
+        orphaned.push(thread);
         continue;
       }
       const rects = Array.from(match.range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
@@ -1217,7 +1219,7 @@
       state.visibleMatches.set(thread.id, match);
     }
 
-    if (!visible.length) {
+    if (!visible.length && !orphaned.length) {
       refs.threadRail.innerHTML = "";
       return;
     }
@@ -1246,10 +1248,32 @@
       item.card.style.top = `${top}px`;
       cursor = top + item.card.offsetHeight + 12;
     }
+    // Orphaned threads — rendered below all anchored threads
+    if (orphaned.length) {
+      if (visible.length) {
+        const separator = document.createElement("div");
+        separator.className = "thread-orphan-separator";
+        separator.textContent = "— anchor deleted —";
+        separator.style.top = `${cursor + 6}px`;
+        refs.threadRail.appendChild(separator);
+        cursor += 32;
+      }
+
+      for (const thread of orphaned) {
+        const card = document.createElement("section");
+        card.className = `thread-card thread-card-orphaned${thread.id === state.activeThreadId ? " active" : ""}${thread.resolved ? " resolved" : ""}`;
+        card.dataset.threadId = thread.id;
+        card.style.top = `${cursor + 14}px`;
+        card.innerHTML = renderThreadCard(thread, true);
+        refs.threadRail.appendChild(card);
+        cursor += card.offsetHeight + 12;
+      }
+    }
+
     refs.threadRail.style.minHeight = `${cursor + 20}px`;
   }
 
-  function renderThreadCard(thread) {
+  function renderThreadCard(thread, orphaned = false) {
     const tree = buildMessageTree(thread.messages);
     if (!tree.length) {
       return "";
@@ -1257,7 +1281,12 @@
 
     const flat = flattenTree(tree);
 
+    const orphanBanner = orphaned
+      ? `<div class="thread-orphan-banner">⚠️ Anchor text was deleted during editing</div>`
+      : "";
+
     return `
+      ${orphanBanner}
       <div class="thread-tree">
         ${flat.map((item) => renderFlatMessage(thread, item.message, item.depth)).join("")}
       </div>
@@ -1664,7 +1693,7 @@
       state.activeThreadId = null;
       return;
     }
-    body.innerHTML = renderThreadCard(thread);
+    body.innerHTML = renderThreadCard(thread, !state.visibleMatches.has(thread.id));
   }
 
   function openThreadDialog(threadId, refs, isPublic) {
@@ -1676,12 +1705,14 @@
     state.activeThreadId = threadId;
     syncThreadLayout(refs);
 
+    const isOrphaned = !state.visibleMatches.has(thread.id);
+
     state.modalOpen = true;
     refs.modalBackdrop.classList.remove("hidden");
     refs.modalBackdrop.innerHTML = `
       <div class="modal thread-modal" role="dialog" aria-modal="true">
         <jot-icon-button icon="close" label="Close" id="threadDialogClose" class="thread-modal-close-wrap"></jot-icon-button>
-        <div class="thread-modal-body">${renderThreadCard(thread)}</div>
+        <div class="thread-modal-body">${renderThreadCard(thread, isOrphaned)}</div>
       </div>
     `;
 

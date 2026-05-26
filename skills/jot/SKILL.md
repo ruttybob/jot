@@ -48,6 +48,21 @@ jot <inst> edit-comment <id> <mid> "new body"
 jot <inst> delete-comment <id> <mid>
 ```
 
+## Update from File
+
+When the user wants to publish/update a note from an existing file:
+
+```bash
+# 1. Create note first (if needed)
+ID=$(jot <inst> create "Title")
+
+# 2. Read file content
+CONTENT=$(cat <file>)
+
+# 3. Update note body
+jot <inst> update "$ID" markdown "$CONTENT"
+```
+
 ## Multiline Content
 
 ⚠️ **Literal `\n` in shell strings does NOT work** — it produces the two characters `\` and `n`, not a line break. This applies to **all commands**: `update`, `reply`, `comment`, etc.

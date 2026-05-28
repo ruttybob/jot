@@ -54,7 +54,7 @@ When the user wants to publish/update a note from an existing file:
 
 ```bash
 # 1. Create note first (if needed)
-ID=$(jot <inst> create "Title")
+ID=$(jot <inst> create "Title" | awk '{print $1}')  # create outputs "id\ttitle"; cut to id only
 
 # 2. Read file content
 CONTENT=$(cat <file>)

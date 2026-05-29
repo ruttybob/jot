@@ -7,8 +7,8 @@
  *   /jot:open       — open jot instance in browser
  *   /jot:pull       — download all tracked notes back to local files
  *
- * Autosync: watches .superpowers/plans/ and .superpowers/specs/ for
- * new/changed .md files and publishes them to jot.
+ * Autosync: intercepts write/edit tool calls for .superpowers/{plans,specs}/*.md
+ * and publishes them to jot.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -23,7 +23,6 @@ import {
   readFileSync,
   writeFileSync,
   unlinkSync,
-  watch,
 } from "node:fs";
 import { resolve, basename, dirname, relative, join } from "node:path";
 import { homedir } from "node:os";
@@ -131,38 +130,14 @@ function getActiveInstance(ctx: {
   return restoreInstanceFromSession(ctx) || loadGlobalInstance();
 }
 
-// ── Autosync helpers ────────────────────────────────────────────
+// ── Sync state ──────────────────────────────────────────────────
 
-const DEBOUNCE_MS = 500;
-const ARCHIVED_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
-
-interface WatcherState {
-  watchers: import("node:fs").FSWatcher[];
+interface SyncState {
   fileToNote: Map<string, string>; // absPath → noteId
-  debounceTimers: Map<string, NodeJS.Timeout>;
-  archivedIds: Set<string>; // cached set of archived note IDs
-  archivedRefreshTimer: NodeJS.Timeout | null;
   ui: any | null; // ctx.ui reference for notifications
 }
 
-/** Fetch all archived note IDs for the instance. */
-function fetchArchivedIds(instanceName: string): Set<string> {
-  try {
-    const out = execFileSync("jot", [instanceName, "list", "--archived"], {
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    const ids = new Set<string>();
-    for (const line of out.trim().split("\n")) {
-      if (!line.trim()) continue;
-      const id = line.split(/\s+/)[0];
-      if (id) ids.add(id);
-    }
-    return ids;
-  } catch {
-    return new Set();
-  }
-}
+// ── jot note operations ─────────────────────────────────────────
 
 /** Create a jot note and upload body content. Returns noteId. */
 function createNote(
@@ -447,16 +422,24 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
     },
   });
 
-  // ── Layer 2: fs.watch + initial sync ──────────────────────────
+  // ── Sync state ────────────────────────────────────────────────
 
-  const state: WatcherState = {
-    watchers: [],
+  const state: SyncState = {
     fileToNote: new Map(),
-    debounceTimers: new Map(),
-    archivedIds: new Set(),
-    archivedRefreshTimer: null,
     ui: null,
   };
+
+  // ── tool_call interception ───────────────────────────────────
+
+  /**
+   * Check if a file path belongs to .superpowers/{plans,specs}/*.md
+   * and return the subDir if it does, or undefined otherwise.
+   */
+  function classifyPath(absPath: string, cwd: string): "plans" | "specs" | undefined {
+    const rel = relative(cwd, absPath);
+    const match = rel.match(/^\.superpowers\/(plans|specs)\/.+\.md$/);
+    return (match?.[1] as "plans" | "specs") || undefined;
+  }
 
   function syncFile(
     absPath: string,
@@ -475,11 +458,6 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
     const existingNoteId = state.fileToNote.get(absPath);
 
     if (existingNoteId) {
-      // Existing file — check if archived
-      if (state.archivedIds.has(existingNoteId)) {
-        state.fileToNote.delete(absPath);
-        return;
-      }
       try {
         updateNote(instanceName, existingNoteId, content);
         state.ui?.notify(
@@ -488,11 +466,9 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
         );
       } catch (err: any) {
         console.error(`jot-autosync: failed to update ${absPath}:`, err.message);
-        // If update fails (note deleted?), stop tracking
         state.fileToNote.delete(absPath);
       }
     } else {
-      // New file — create note
       const projectName = basename(cwd);
       const fileName = basename(absPath);
       const title = `${projectName}/${subDir}/${fileName}`;
@@ -510,127 +486,12 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
     }
   }
 
-  function setupWatcher(
-    dirPath: string,
-    subDir: "plans" | "specs",
-    cwd: string,
-  ): void {
-    if (!existsSync(dirPath)) return;
-
-    const watcher = watch(dirPath, (_eventType, filename) => {
-      if (!filename || !filename.endsWith(".md")) return;
-
-      const absPath = join(dirPath, filename);
-
-      // Debounce per file
-      const existing = state.debounceTimers.get(absPath);
-      if (existing) clearTimeout(existing);
-
-      state.debounceTimers.set(
-        absPath,
-        setTimeout(() => {
-          state.debounceTimers.delete(absPath);
-          syncFile(absPath, subDir, cwd);
-        }, DEBOUNCE_MS),
-      );
-    });
-
-    state.watchers.push(watcher);
-  }
-
-  /** Periodically refresh the archived IDs cache. */
-  function startArchivedRefresh(instanceName: string): void {
-    stopArchivedRefresh();
-    state.archivedRefreshTimer = setInterval(() => {
-      try {
-        state.archivedIds = fetchArchivedIds(instanceName);
-      } catch (err: any) {
-        console.error("jot-autosync: failed to refresh archived IDs:", err.message);
-      }
-    }, ARCHIVED_REFRESH_MS);
-  }
-
-  function stopArchivedRefresh(): void {
-    if (state.archivedRefreshTimer) {
-      clearInterval(state.archivedRefreshTimer);
-      state.archivedRefreshTimer = null;
-    }
-  }
-
-  /**
-   * Restore fileToNote mapping at session start.
-   * Scans jot notes and matches titles like "<project>/<plans|specs>/<filename>"
-   * back to local .md files.
-   */
-  function restoreFileMapping(cwd: string, instanceName: string): void {
-    const projectName = basename(cwd);
-    const prefix = `${projectName}/`;
-
-    // Build expected titles for existing local files
-    const expectedTitles = new Map<string, string>(); // title → absPath
-    for (const subDir of ["plans", "specs"] as const) {
-      const dirPath = join(cwd, ".superpowers", subDir);
-      if (!existsSync(dirPath)) continue;
-      try {
-        for (const entry of readdirSync(dirPath)) {
-          if (!entry.endsWith(".md")) continue;
-          const title = `${projectName}/${subDir}/${entry}`;
-          expectedTitles.set(title, join(dirPath, entry));
-        }
-      } catch {
-        // Directory not readable
-      }
-    }
-
-    if (expectedTitles.size === 0) return;
-
-    // Fetch jot notes and match
-    try {
-      const out = execFileSync("jot", [instanceName, "list"], {
-        encoding: "utf-8",
-        timeout: 10000,
-      });
-      for (const line of out.trim().split("\n")) {
-        if (!line.trim()) continue;
-        // Format: id\ttitle\tdate
-        const tabIdx = line.indexOf("\t");
-        if (tabIdx === -1) continue;
-        const noteId = line.substring(0, tabIdx);
-        const rest = line.substring(tabIdx + 1);
-        // Title is between first and second tab
-        const titleEnd = rest.indexOf("\t");
-        const title = titleEnd === -1 ? rest : rest.substring(0, titleEnd);
-
-        const absPath = expectedTitles.get(title);
-        if (absPath) {
-          state.fileToNote.set(absPath, noteId);
-        }
-      }
-    } catch (err: any) {
-      console.error("jot-autosync: failed to restore file mapping:", err.message);
-    }
-  }
-
-  // ── Layer 1: tool_call interception ──────────────────────────
-
-  /**
-   * Check if a file path belongs to .superpowers/{plans,specs}/*.md
-   * and return the subDir if it does, or undefined otherwise.
-   */
-  function classifyPath(absPath: string, cwd: string): "plans" | "specs" | undefined {
-    const rel = relative(cwd, absPath);
-    const match = rel.match(/^\.superpowers\/(plans|specs)\/.+\.md$/);
-    return (match?.[1] as "plans" | "specs") || undefined;
-  }
-
   pi.on("tool_call", async (event, _ctx) => {
     // Intercept write tool
     if (isToolCallEventType("write", event)) {
       const subDir = classifyPath(resolve(event.input.path), process.cwd());
       if (!subDir) return;
 
-      // Defer sync — let the write complete first, then sync from disk
-      // Use setImmediate so we don't block the tool execution
       const absPath = resolve(event.input.path);
       const cwd = process.cwd();
       setImmediate(() => {
@@ -643,7 +504,7 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
       return;
     }
 
-    // Intercept edit tool — edit modifies existing files, sync after
+    // Intercept edit tool
     if (isToolCallEventType("edit", event)) {
       const subDir = classifyPath(resolve(event.input.path), process.cwd());
       if (!subDir) return;
@@ -661,94 +522,14 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
     }
   });
 
-  /**
-   * Initial sync: create jot notes for local .superpowers/{plans,specs}/*.md
-   * files that don't yet have a jot note (no mapping in fileToNote).
-   */
-  function initialSync(cwd: string, instanceName: string): void {
-    let created = 0;
-    for (const subDir of ["plans", "specs"] as const) {
-      const dirPath = join(cwd, ".superpowers", subDir);
-      if (!existsSync(dirPath)) continue;
-      try {
-        for (const entry of readdirSync(dirPath)) {
-          if (!entry.endsWith(".md")) continue;
-          const absPath = join(dirPath, entry);
-          if (state.fileToNote.has(absPath)) continue; // already mapped
-          try {
-            syncFile(absPath, subDir, cwd);
-            created++;
-          } catch (err: any) {
-            console.error(`jot-autosync: initial sync failed for ${absPath}:`, err.message);
-          }
-        }
-      } catch {
-        // Directory not readable
-      }
-    }
-    if (created > 0) {
-      console.log(`jot-autosync: initial sync created ${created} notes`);
-    }
-  }
-
   // ── Lifecycle events ──────────────────────────────────────────
 
   pi.on("session_start", async (_event, ctx) => {
-    const cwd = ctx.cwd;
-
-    // Store ui reference for notifications from syncFile
     state.ui = ctx.ui;
-
-    // Refresh archived IDs cache
-    const instanceName = loadGlobalInstance();
-    state.archivedIds = fetchArchivedIds(instanceName);
-
-    // Restore file→note mapping from previous sessions
-    restoreFileMapping(cwd, instanceName);
-
-    // Initial sync: create jot notes for files that exist locally
-    // but have no jot note yet (e.g. created before extension loaded)
-    initialSync(cwd, instanceName);
-
-    // Setup watchers for .superpowers/plans and .superpowers/specs
-    const plansDir = join(cwd, ".superpowers", "plans");
-    const specsDir = join(cwd, ".superpowers", "specs");
-
-    setupWatcher(plansDir, "plans", cwd);
-    setupWatcher(specsDir, "specs", cwd);
-
-    // Start periodic archived IDs refresh
-    if (state.watchers.length > 0) {
-      startArchivedRefresh(instanceName);
-    }
-
-    if (state.watchers.length > 0 && ctx.hasUI) {
-      ctx.ui.notify(
-        `jot-autosync: watching .superpowers/{plans,specs}/ → ${instanceName}`,
-        "info",
-      );
-    }
   });
 
   pi.on("session_shutdown", async () => {
-    // Stop archived refresh timer
-    stopArchivedRefresh();
-
-    // Close all watchers
-    for (const w of state.watchers) {
-      w.close();
-    }
-    state.watchers = [];
-
-    // Clear debounce timers
-    for (const timer of state.debounceTimers.values()) {
-      clearTimeout(timer);
-    }
-    state.debounceTimers.clear();
-
-    // Clear maps
     state.fileToNote.clear();
-    state.archivedIds.clear();
     state.ui = null;
   });
 }

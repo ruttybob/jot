@@ -265,57 +265,25 @@ export default function jotAutosyncExtension(pi: ExtensionAPI) {
     description: "Publish a file to jot: /jot:public <path>",
     getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
       const cwd = process.cwd();
-      const expanded = prefix.startsWith("~")
-        ? prefix.replace("~", process.env.HOME || "~")
-        : prefix;
-      const absPrefix = expanded.startsWith("/") ? expanded : join(cwd, expanded);
+      const dirs = ["plans", "specs"] as const;
+      const items: AutocompleteItem[] = [];
 
-      let dir: string;
-      let partial: string;
-      try {
-        const s = statSync(absPrefix);
-        if (s.isDirectory()) {
-          dir = absPrefix;
-          partial = "";
-        } else {
-          dir = dirname(absPrefix);
-          partial = basename(absPrefix);
+      for (const sub of dirs) {
+        const dirPath = join(cwd, ".superpowers", sub);
+        if (!existsSync(dirPath)) continue;
+        try {
+          for (const entry of readdirSync(dirPath)) {
+            if (!entry.endsWith(".md")) continue;
+            const rel = `.superpowers/${sub}/${entry}`;
+            if (prefix && !rel.toLowerCase().startsWith(prefix.toLowerCase())) continue;
+            items.push({ value: rel, label: entry, description: sub });
+          }
+        } catch {
+          // skip
         }
-      } catch {
-        dir = dirname(absPrefix);
-        partial = basename(absPrefix);
       }
 
-      let entries: string[];
-      try {
-        entries = readdirSync(dir);
-      } catch {
-        return null;
-      }
-
-      const hidden = partial.startsWith(".");
-      const filtered = entries
-        .filter(
-          (e) =>
-            (hidden || !e.startsWith(".")) &&
-            e.toLowerCase().startsWith(partial.toLowerCase()),
-        )
-        .sort((a, b) => a.localeCompare(b))
-        .slice(0, 30);
-
-      if (filtered.length === 0) return null;
-
-      return filtered.map((name) => {
-        const fullPath = join(dir, name);
-        const isDir = statSync(fullPath).isDirectory();
-        const relPath = relative(cwd, fullPath);
-        const display = relPath.startsWith("..") ? fullPath : relPath;
-        return {
-          value: isDir ? display + "/" : display,
-          label: isDir ? name + "/" : name,
-          description: isDir ? undefined : relative(cwd, dir) || ".",
-        };
-      });
+      return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       const filePath = args.trim();

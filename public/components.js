@@ -29,17 +29,32 @@ class JotIconButton extends HTMLElement {
   connectedCallback() {
     if (this._rendered) return;
     this._rendered = true;
+    this._render();
+  }
+
+  static get observedAttributes() {
+    return ["icon", "label"];
+  }
+
+  attributeChangedCallback() {
+    if (this._rendered) this._render();
+  }
+
+  _render() {
     const icon = this.getAttribute("icon") || "";
     const label = this.getAttribute("label") || "";
     const size = this.getAttribute("size") || "md";
     const danger = this.hasAttribute("danger");
-    const btn = document.createElement("button");
-    btn.type = "button";
+    let btn = this.querySelector("button");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      this.appendChild(btn);
+    }
     btn.className = `jot-btn-icon jot-btn-icon--${size}${danger ? " jot-btn-icon--danger" : ""}`;
     btn.setAttribute("aria-label", label);
     btn.title = label;
     btn.innerHTML = ICONS[icon] || "";
-    this.appendChild(btn);
   }
 }
 

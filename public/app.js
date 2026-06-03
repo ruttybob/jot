@@ -462,6 +462,11 @@
       const locked = state.note?.locked || false;
       lockButton.setAttribute("icon", locked ? "lock" : "unlock");
       lockButton.setAttribute("label", locked ? "Unlock note" : "Lock note");
+      if (locked) {
+        lockButton.classList.add("note-locked-active");
+      } else {
+        lockButton.classList.remove("note-locked-active");
+      }
     }
     if (lockButton) {
       updateLockButton();

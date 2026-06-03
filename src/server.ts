@@ -69,7 +69,6 @@ type NoteMetaFile = {
   threads: CommentThread[];
   collab?: SavedCollabState;
   collabState?: SavedCollabState;
-  archived?: boolean;
 };
 
 type NoteRecord = {
@@ -83,7 +82,6 @@ type NoteRecord = {
   markdown: string;
   collab: CollabState;
   clientAcks: Map<string, number>;
-  archived: boolean;
 };
 
 type NoteSummary = {
@@ -92,7 +90,6 @@ type NoteSummary = {
   updatedAt: string;
   shareId: string;
   snippet: string;
-  archived: boolean;
 };
 
 type DeviceToken = {
@@ -601,9 +598,7 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
 
 app.get("/api/notes", requireOwnerApi, (req, res) => {
   const query = String(req.query.q || "");
-  const archived = String(req.query.archived || "");
-  // archived: "true" = только архивные, "any" = все, ""/"false" = только активные
-  const results = searchNotes(query, archived ? { archived } : undefined);
+  const results = searchNotes(query);
   res.json({ ok: true, notes: results });
 });
 
@@ -658,22 +653,18 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   const titleProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "title");
   const markdownProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "markdown");
   const shareAccessProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "shareAccess");
-  const archivedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "archived");
   const nextTitle = titleProvided ? normalizeTitle(String(req.body.title || note.title)) : note.title;
   const nextMarkdown = markdownProvided ? String(req.body.markdown || "") : note.markdown;
   const nextShareAccess = shareAccessProvided && ["none", "view", "comment", "edit"].includes(req.body.shareAccess)
     ? (req.body.shareAccess as ShareAccess)
     : note.shareAccess;
-  const nextArchived = archivedProvided ? Boolean(req.body.archived) : note.archived;
   const titleChanged = nextTitle !== note.title;
   const markdownChanged = nextMarkdown !== note.markdown;
 
   const shareAccessChanged = nextShareAccess !== note.shareAccess;
-  const archivedChanged = nextArchived !== note.archived;
 
   note.title = nextTitle;
   note.shareAccess = nextShareAccess;
-  note.archived = nextArchived;
   if (markdownChanged) {
     note.collab = collabFromMarkdown(nextMarkdown, note.collab.serverCounter + 1);
     note.markdown = nextMarkdown;
@@ -683,11 +674,11 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   if (shareAccessChanged) {
     enforceShareAccessForConnections(note);
   }
-  if (titleChanged || markdownChanged || shareAccessChanged || archivedChanged) {
+  if (titleChanged || markdownChanged || shareAccessChanged) {
     broadcastEditorHello(note);
     broadcastNoteUpdate(note);
   }
-  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess, archived: note.archived });
+  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess });
 });
 
 app.get("/api/notes/:id/collab", requireOwnerApi, (req, res) => {
@@ -1488,7 +1479,6 @@ function loadNotesIntoMemory() {
       threads,
       collab,
       clientAcks: new Map(),
-      archived: meta.archived ?? false,
     });
   }
 
@@ -1581,7 +1571,6 @@ function createNote() {
     threads: [],
     collab: newCollabState(),
     clientAcks: new Map(),
-    archived: false,
   };
 
   notes.set(id, note);
@@ -1601,7 +1590,6 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
     updatedAt: note.updatedAt,
     threads: note.threads,
     collab: saveCollabState(note.collab),
-    archived: note.archived,
   };
 
   fs.writeFileSync(noteMarkdownPath(note.id), note.markdown, "utf8");
@@ -1611,16 +1599,9 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
   }
 }
 
-function searchNotes(query: string, options?: { archived?: string }) {
+function searchNotes(query: string) {
   const needle = query.trim().toLowerCase();
-  const archivedParam = options?.archived || "false";
   return Array.from(notes.values())
-    .filter((note) => {
-      // Фильтрация по статусу архивации
-      if (archivedParam === "true") return note.archived;
-      if (archivedParam === "any") return true;
-      return !note.archived; // по умолчанию — только активные
-    })
     .map((note) => summarizeNote(note, needle))
     .filter((note) => {
       if (!needle) {
@@ -1639,7 +1620,6 @@ function summarizeNote(note: NoteRecord, needle: string): NoteSummary {
     updatedAt: note.updatedAt,
     shareId: note.shareId,
     snippet: buildSnippet(note, needle),
-    archived: note.archived,
   };
 }
 

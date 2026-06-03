@@ -168,7 +168,7 @@ const subCommand = args[1];
 
 if (!subCommand) {
   console.error(`Usage: jot <instance> <command> [args...]`);
-  console.error(`Commands: list, search, read, create, edit, delete, update, archive, unarchive`);
+  console.error(`Commands: list, search, read, create, edit, delete, update`);
   process.exit(1);
 }
 
@@ -253,40 +253,23 @@ if (isShareInstance(instance)) {
 
 switch (subCommand) {
   case "list": {
-    const archivedArg = args.find((a) => a.startsWith("--archived"));
-    let endpoint = "/api/notes";
-    if (archivedArg) {
-      const val = archivedArg.includes("=") ? archivedArg.split("=")[1] : "true";
-      endpoint += `?archived=${val}`;
-    }
-    const payload = await request(instance, "GET", endpoint);
+    const payload = await request(instance, "GET", "/api/notes");
     for (const note of payload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}`);
     }
     break;
   }
 
   case "search": {
-    const searchQueryParts = [];
-    const searchFlags = [];
-    for (const a of args.slice(2)) {
-      if (a.startsWith("--archived")) searchFlags.push(a);
-      else searchQueryParts.push(a);
-    }
-    const searchQuery = searchQueryParts.join(" ");
+    const searchQuery = args.slice(2).join(" ");
     if (!searchQuery) {
-      console.error("Usage: jot <instance> search <query> [--archived[=true|any]]");
+      console.error("Usage: jot <instance> search <query>");
       process.exit(1);
     }
-    let searchEndpoint = `/api/notes?q=${encodeURIComponent(searchQuery)}`;
-    const archivedSearch = searchFlags.find((a) => a.startsWith("--archived"));
-    if (archivedSearch) {
-      const val = archivedSearch.includes("=") ? archivedSearch.split("=")[1] : "true";
-      searchEndpoint += `&archived=${val}`;
-    }
+    const searchEndpoint = `/api/notes?q=${encodeURIComponent(searchQuery)}`;
     const searchPayload = await request(instance, "GET", searchEndpoint);
     for (const note of searchPayload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}`);
     }
     break;
   }
@@ -544,19 +527,6 @@ switch (subCommand) {
     break;
   }
 
-  case "archive":
-  case "unarchive": {
-    const noteId = args[2];
-    if (!noteId) {
-      console.error(`Usage: jot <instance> ${subCommand} <id>`);
-      process.exit(1);
-    }
-    const value = subCommand === "archive";
-    await request(instance, "PUT", `/api/notes/${noteId}`, { archived: value });
-    console.log(`${value ? "Archived" : "Unarchived"} ${noteId}`);
-    break;
-  }
-
   case "delete": {
     const noteId = args[2];
     if (!noteId) {
@@ -590,8 +560,8 @@ Instance management:
   jot instances                           List registered instances
 
 Owner commands:
-  jot <instance> list [--archived]        List notes (active by default, --archived for archived)
-  jot <instance> search <query> [--archived] Search notes
+  jot <instance> list                     List notes
+  jot <instance> search <query>           Search notes
   jot <instance> read <id>                Read a note with comments
   jot <instance> read-threads <id>         Read only comments (no note body)
   jot <instance> create [title]           Create a new note
@@ -606,8 +576,6 @@ Owner commands:
   jot <instance> edit <id> '<edits>'       Apply edits (JSON array of {oldText, newText})
   jot <instance> update <id> title <val>   Update note title
   jot <instance> update <id> markdown <v>  Replace full markdown
-  jot <instance> archive <id>              Archive a note
-  jot <instance> unarchive <id>            Unarchive a note
   jot <instance> delete <id>               Delete a note
 
 Shared note commands:

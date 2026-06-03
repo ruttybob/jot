@@ -111,7 +111,6 @@
     showResolved: false,
     showComments: true,
     modalOpen: false,
-    archiveTab: "active",  // "active" | "archived"
   };
 
   if (page === "list") {
@@ -143,10 +142,6 @@
           </div>
         </header>
         <main class="list-page">
-          <div class="list-tabs" id="listTabs">
-            <button type="button" class="list-tab active" data-tab="active">Active</button>
-            <button type="button" class="list-tab" data-tab="archived">Archive</button>
-          </div>
           <div class="list-search-wrap">
             <input class="list-search" id="searchInput" type="text" placeholder="Search notes" autocomplete="off" />
           </div>
@@ -171,18 +166,6 @@
     logoutButton.addEventListener("click", logoutOwner);
     settingsButton.addEventListener("click", () => openSettingsModal());
 
-    const listTabs = document.getElementById("listTabs");
-    listTabs.addEventListener("click", (event) => {
-      const tab = event.target.closest("[data-tab]");
-      if (!tab) return;
-      if (tab.dataset.tab === state.archiveTab) return;
-      state.archiveTab = tab.dataset.tab;
-      listTabs.querySelectorAll(".list-tab").forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      loadNotes(searchInput.value);
-    });
-
-
     searchInput.addEventListener("input", () => {
       clearTimeout(state.searchTimer);
       state.searchTimer = setTimeout(() => {
@@ -197,20 +180,6 @@
         const id = deleteBtn.dataset.noteId;
         if (!id || !confirm("Delete this note?")) return;
         await api(`/api/notes/${id}`, { method: "DELETE" });
-        loadNotes(searchInput.value);
-        return;
-      }
-      const archiveBtn = event.target.closest(".note-archive-btn") || event.target.closest("jot-icon-button.note-archive-btn");
-      if (archiveBtn) {
-        event.stopPropagation();
-        const id = archiveBtn.dataset.noteId;
-        const archived = archiveBtn.dataset.archived === "true" ? false : true;
-        try {
-          await api(`/api/notes/${id}`, { method: "PUT", body: { archived } });
-        } catch (e) {
-          console.error("Failed to update archive status:", e);
-          return;
-        }
         loadNotes(searchInput.value);
         return;
       }
@@ -306,8 +275,7 @@
     }
 
     async function loadNotes(query) {
-      const archived = state.archiveTab === "archived" ? "true" : "";
-      const response = await api(`/api/notes?q=${encodeURIComponent(query)}${archived ? `&archived=${archived}` : ""}`);
+      const response = await api(`/api/notes?q=${encodeURIComponent(query)}`);
       const hasNotes = response.notes.length > 0;
       const hasQuery = query.trim().length > 0;
 
@@ -326,13 +294,12 @@
         ? response.notes
             .map(
               (note) => `
-                <div class="note-row${note.archived ? " note-row--archived" : ""}" data-note-id="${escapeHtml(note.id)}">
+                <div class="note-row" data-note-id="${escapeHtml(note.id)}">
                   <div class="note-row-content">
                     <div class="note-row-title">${escapeHtml(note.title || "untitled")}</div>
                     <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
-                  <jot-icon-button icon="${note.archived ? "unarchive" : "archive"}" label="${note.archived ? "Unarchive" : "Archive"}" class="note-archive-btn" data-note-id="${escapeHtml(note.id)}" data-archived="${note.archived ? "true" : "false"}"></jot-icon-button>
                   <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" danger></jot-icon-button>
                 </div>
               `,

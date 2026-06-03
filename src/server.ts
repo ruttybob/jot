@@ -70,6 +70,7 @@ type NoteMetaFile = {
   collab?: SavedCollabState;
   collabState?: SavedCollabState;
   archived?: boolean;
+  locked?: boolean;
 };
 
 type NoteRecord = {
@@ -84,6 +85,7 @@ type NoteRecord = {
   collab: CollabState;
   clientAcks: Map<string, number>;
   archived: boolean;
+  locked: boolean;
 };
 
 type NoteSummary = {
@@ -93,6 +95,7 @@ type NoteSummary = {
   shareId: string;
   snippet: string;
   archived: boolean;
+  locked: boolean;
 };
 
 type DeviceToken = {
@@ -593,6 +596,11 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
     return;
   }
 
+  if (note.locked) {
+    res.status(403).json({ ok: false, error: "Note is locked" });
+    return;
+  }
+
   notes.delete(id);
   try { fs.unlinkSync(noteMarkdownPath(id)); } catch {}
   try { fs.unlinkSync(noteMetaPath(id)); } catch {}
@@ -659,21 +667,25 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   const markdownProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "markdown");
   const shareAccessProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "shareAccess");
   const archivedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "archived");
+  const lockedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "locked");
   const nextTitle = titleProvided ? normalizeTitle(String(req.body.title || note.title)) : note.title;
   const nextMarkdown = markdownProvided ? String(req.body.markdown || "") : note.markdown;
   const nextShareAccess = shareAccessProvided && ["none", "view", "comment", "edit"].includes(req.body.shareAccess)
     ? (req.body.shareAccess as ShareAccess)
     : note.shareAccess;
   const nextArchived = archivedProvided ? Boolean(req.body.archived) : note.archived;
+  const nextLocked = lockedProvided ? Boolean(req.body.locked) : note.locked;
   const titleChanged = nextTitle !== note.title;
   const markdownChanged = nextMarkdown !== note.markdown;
 
   const shareAccessChanged = nextShareAccess !== note.shareAccess;
   const archivedChanged = nextArchived !== note.archived;
+  const lockedChanged = nextLocked !== note.locked;
 
   note.title = nextTitle;
   note.shareAccess = nextShareAccess;
   note.archived = nextArchived;
+  note.locked = nextLocked;
   if (markdownChanged) {
     note.collab = collabFromMarkdown(nextMarkdown, note.collab.serverCounter + 1);
     note.markdown = nextMarkdown;
@@ -683,11 +695,11 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   if (shareAccessChanged) {
     enforceShareAccessForConnections(note);
   }
-  if (titleChanged || markdownChanged || shareAccessChanged || archivedChanged) {
+  if (titleChanged || markdownChanged || shareAccessChanged || archivedChanged || lockedChanged) {
     broadcastEditorHello(note);
     broadcastNoteUpdate(note);
   }
-  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess, archived: note.archived });
+  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess, archived: note.archived, locked: note.locked });
 });
 
 app.get("/api/notes/:id/collab", requireOwnerApi, (req, res) => {
@@ -1489,6 +1501,7 @@ function loadNotesIntoMemory() {
       collab,
       clientAcks: new Map(),
       archived: meta.archived ?? false,
+      locked: meta.locked ?? false,
     });
   }
 
@@ -1582,6 +1595,7 @@ function createNote() {
     collab: newCollabState(),
     clientAcks: new Map(),
     archived: false,
+    locked: false,
   };
 
   notes.set(id, note);
@@ -1602,6 +1616,7 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
     threads: note.threads,
     collab: saveCollabState(note.collab),
     archived: note.archived,
+    locked: note.locked,
   };
 
   fs.writeFileSync(noteMarkdownPath(note.id), note.markdown, "utf8");
@@ -1640,6 +1655,7 @@ function summarizeNote(note: NoteRecord, needle: string): NoteSummary {
     shareId: note.shareId,
     snippet: buildSnippet(note, needle),
     archived: note.archived,
+    locked: note.locked,
   };
 }
 
@@ -1747,6 +1763,8 @@ function serializeNoteForClient(note: NoteRecord, req: Request) {
       shareUrl: makeShareUrl(req, note.shareId),
       updatedAt: note.updatedAt,
       createdAt: note.createdAt,
+      archived: note.archived,
+      locked: note.locked,
     },
     viewer: buildViewerInfo(req),
     threads: serializeThreads(note, req),

@@ -223,6 +223,10 @@ input:focus, textarea:focus { border-color: var(--muted); }
 .note-row--archived .note-row-title { color: var(--muted-2); }
 .note-row--archived .note-row-snippet { color: var(--muted-2); }
 
+.note-locked-indicator {
+  opacity: 0.6;
+}
+
 /* Табы Active / Archive */
 .list-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 0.5rem; }
 .list-tab { background: none; border: none; padding: 0.5rem 1rem; font-size: 0.88rem; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all 0.15s; }

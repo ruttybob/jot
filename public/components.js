@@ -18,6 +18,8 @@ const ICONS = {
   archive: '<svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5h12" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 9.5h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   unarchive: '<svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5h12" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 9v4M6 11l2-2 2 2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   message: '<svg viewBox="0 0 16 16"><path d="M2 3h12a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5l-3 3V4a1 1 0 0 1 0-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 1 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  unlock: '<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 1 1 5 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
 };
 
 window.__ICONS__ = ICONS;

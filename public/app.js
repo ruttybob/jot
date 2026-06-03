@@ -195,7 +195,19 @@
       if (deleteBtn) {
         event.stopPropagation();
         const id = deleteBtn.dataset.noteId;
-        if (!id || !confirm("Delete this note?")) return;
+        const isLocked = deleteBtn.dataset.locked === "true";
+        if (!id) return;
+        if (isLocked) {
+          if (!confirm("This note is locked. Unlock and delete?")) return;
+          try {
+            await api(`/api/notes/${id}`, { method: "PUT", body: { locked: false } });
+          } catch (e) {
+            console.error("Failed to unlock note:", e);
+            return;
+          }
+        } else {
+          if (!confirm("Delete this note?")) return;
+        }
         await api(`/api/notes/${id}`, { method: "DELETE" });
         loadNotes(searchInput.value);
         return;
@@ -333,7 +345,8 @@
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
                   <jot-icon-button icon="${note.archived ? "unarchive" : "archive"}" label="${note.archived ? "Unarchive" : "Archive"}" class="note-archive-btn" data-note-id="${escapeHtml(note.id)}" data-archived="${note.archived ? "true" : "false"}"></jot-icon-button>
-                  <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" danger></jot-icon-button>
+                  ${note.locked ? `<jot-icon-button icon="lock" label="Locked" class="note-locked-indicator" data-note-id="${escapeHtml(note.id)}" disabled></jot-icon-button>` : ""}
+                  <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}" danger></jot-icon-button>
                 </div>
               `,
             )
@@ -441,6 +454,31 @@
     const agentButton = document.getElementById("agentButton");
     if (agentButton) {
       agentButton.addEventListener("click", () => openAgentModal(refs));
+    }
+
+    const lockButton = document.getElementById("lockButton");
+    function updateLockButton() {
+      if (!lockButton) return;
+      const locked = state.note?.locked || false;
+      lockButton.setAttribute("icon", locked ? "lock" : "unlock");
+      lockButton.setAttribute("label", locked ? "Unlock note" : "Lock note");
+    }
+    if (lockButton) {
+      updateLockButton();
+      lockButton.addEventListener("click", async () => {
+        if (!state.note) return;
+        const nextLocked = !state.note.locked;
+        try {
+          const payload = await api(`/api/notes/${noteId}`, {
+            method: "PUT",
+            body: { locked: nextLocked },
+          });
+          state.note.locked = nextLocked;
+          updateLockButton();
+        } catch (e) {
+          console.error("Failed to toggle lock:", e);
+        }
+      });
     }
 
     if (resolvedButton) {
@@ -833,6 +871,7 @@
       if (refsArg.saveStatus) {
         refsArg.saveStatus.textContent = publicMode ? "" : "Saved";
       }
+      updateLockButton();
       updateResolvedButton(refsArg.resolvedButton);
       updateCommentsButton(refsArg.commentsButton);
       syncThreadLayout(refsArg);
@@ -864,6 +903,7 @@
           <div class="topbar-right">
             <jot-icon-button icon="preview" label="Preview" id="previewFab"></jot-icon-button>
             <jot-icon-button icon="robot" label="Agent setup" id="agentButton"></jot-icon-button>
+            <jot-icon-button icon="unlock" label="Lock note" id="lockButton"></jot-icon-button>
             <div class="share-popover-wrap" id="sharePopoverWrap">
               <jot-icon-button icon="share" label="Share" id="shareButton"></jot-icon-button>
               <div class="share-popover hidden" id="sharePopover"></div>

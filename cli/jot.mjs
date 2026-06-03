@@ -261,7 +261,7 @@ switch (subCommand) {
     }
     const payload = await request(instance, "GET", endpoint);
     for (const note of payload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}${note.locked ? "\t[locked]" : ""}`);
     }
     break;
   }
@@ -286,7 +286,7 @@ switch (subCommand) {
     }
     const searchPayload = await request(instance, "GET", searchEndpoint);
     for (const note of searchPayload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.archived ? "\t[archived]" : ""}${note.locked ? "\t[locked]" : ""}`);
     }
     break;
   }

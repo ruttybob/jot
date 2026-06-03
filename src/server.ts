@@ -69,6 +69,7 @@ type NoteMetaFile = {
   threads: CommentThread[];
   collab?: SavedCollabState;
   collabState?: SavedCollabState;
+  locked?: boolean;
 };
 
 type NoteRecord = {
@@ -82,6 +83,7 @@ type NoteRecord = {
   markdown: string;
   collab: CollabState;
   clientAcks: Map<string, number>;
+  locked: boolean;
 };
 
 type NoteSummary = {
@@ -90,6 +92,7 @@ type NoteSummary = {
   updatedAt: string;
   shareId: string;
   snippet: string;
+  locked: boolean;
 };
 
 type DeviceToken = {
@@ -590,6 +593,11 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
     return;
   }
 
+  if (note.locked) {
+    res.status(403).json({ ok: false, error: "Note is locked" });
+    return;
+  }
+
   notes.delete(id);
   try { fs.unlinkSync(noteMarkdownPath(id)); } catch {}
   try { fs.unlinkSync(noteMetaPath(id)); } catch {}
@@ -598,7 +606,8 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
 
 app.get("/api/notes", requireOwnerApi, (req, res) => {
   const query = String(req.query.q || "");
-  const results = searchNotes(query);
+  const locked = String(req.query.locked || "");
+  const results = searchNotes(query, { locked: locked || undefined });
   res.json({ ok: true, notes: results });
 });
 
@@ -653,18 +662,22 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   const titleProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "title");
   const markdownProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "markdown");
   const shareAccessProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "shareAccess");
+  const lockedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "locked");
   const nextTitle = titleProvided ? normalizeTitle(String(req.body.title || note.title)) : note.title;
   const nextMarkdown = markdownProvided ? String(req.body.markdown || "") : note.markdown;
   const nextShareAccess = shareAccessProvided && ["none", "view", "comment", "edit"].includes(req.body.shareAccess)
     ? (req.body.shareAccess as ShareAccess)
     : note.shareAccess;
+  const nextLocked = lockedProvided ? Boolean(req.body.locked) : note.locked;
   const titleChanged = nextTitle !== note.title;
   const markdownChanged = nextMarkdown !== note.markdown;
 
   const shareAccessChanged = nextShareAccess !== note.shareAccess;
+  const lockedChanged = nextLocked !== note.locked;
 
   note.title = nextTitle;
   note.shareAccess = nextShareAccess;
+  note.locked = nextLocked;
   if (markdownChanged) {
     note.collab = collabFromMarkdown(nextMarkdown, note.collab.serverCounter + 1);
     note.markdown = nextMarkdown;
@@ -674,11 +687,11 @@ app.put("/api/notes/:id", requireOwnerApi, (req, res) => {
   if (shareAccessChanged) {
     enforceShareAccessForConnections(note);
   }
-  if (titleChanged || markdownChanged || shareAccessChanged) {
+  if (titleChanged || markdownChanged || shareAccessChanged || lockedChanged) {
     broadcastEditorHello(note);
     broadcastNoteUpdate(note);
   }
-  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess });
+  res.json({ ok: true, savedAt: note.updatedAt, shareAccess: note.shareAccess, locked: note.locked });
 });
 
 app.get("/api/notes/:id/collab", requireOwnerApi, (req, res) => {
@@ -1479,6 +1492,7 @@ function loadNotesIntoMemory() {
       threads,
       collab,
       clientAcks: new Map(),
+      locked: meta.locked ?? false,
     });
   }
 
@@ -1571,6 +1585,7 @@ function createNote() {
     threads: [],
     collab: newCollabState(),
     clientAcks: new Map(),
+    locked: false,
   };
 
   notes.set(id, note);
@@ -1590,6 +1605,7 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
     updatedAt: note.updatedAt,
     threads: note.threads,
     collab: saveCollabState(note.collab),
+    locked: note.locked,
   };
 
   fs.writeFileSync(noteMarkdownPath(note.id), note.markdown, "utf8");
@@ -1599,9 +1615,16 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
   }
 }
 
-function searchNotes(query: string) {
+function searchNotes(query: string, options?: { locked?: string }) {
   const needle = query.trim().toLowerCase();
+  const lockedParam = options?.locked;
   return Array.from(notes.values())
+    .filter((note) => {
+      // Фильтрация по статусу блокировки
+      if (lockedParam === "true") return note.locked;
+      if (lockedParam === "false") return !note.locked;
+      return true; // без фильтра — показать все
+    })
     .map((note) => summarizeNote(note, needle))
     .filter((note) => {
       if (!needle) {
@@ -1620,6 +1643,7 @@ function summarizeNote(note: NoteRecord, needle: string): NoteSummary {
     updatedAt: note.updatedAt,
     shareId: note.shareId,
     snippet: buildSnippet(note, needle),
+    locked: note.locked,
   };
 }
 
@@ -1727,6 +1751,7 @@ function serializeNoteForClient(note: NoteRecord, req: Request) {
       shareUrl: makeShareUrl(req, note.shareId),
       updatedAt: note.updatedAt,
       createdAt: note.createdAt,
+      locked: note.locked,
     },
     viewer: buildViewerInfo(req),
     threads: serializeThreads(note, req),

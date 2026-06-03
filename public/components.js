@@ -16,6 +16,8 @@ const ICONS = {
   undo: '<svg viewBox="0 0 16 16"><path d="M4.1 6.1V3.3M4.1 3.3H6.9M4.1 3.3 7 6.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8a4.9 4.9 0 1 1-1.3-3.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   robot: '<svg viewBox="0 0 16 16"><rect x="3" y="5.5" width="10" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.5V3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="2.5" r="1" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="9" r="1" fill="currentColor"/><circle cx="10" cy="9" r="1" fill="currentColor"/><path d="M6.5 11.5h3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M1 8.5h2M13 8.5h2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   message: '<svg viewBox="0 0 16 16"><path d="M2 3h12a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5l-3 3V4a1 1 0 0 1 0-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 1 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  unlock: '<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 1 1 5 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
 };
 
 window.__ICONS__ = ICONS;
@@ -25,17 +27,32 @@ class JotIconButton extends HTMLElement {
   connectedCallback() {
     if (this._rendered) return;
     this._rendered = true;
+    this._render();
+  }
+
+  static get observedAttributes() {
+    return ["icon", "label"];
+  }
+
+  attributeChangedCallback() {
+    if (this._rendered) this._render();
+  }
+
+  _render() {
     const icon = this.getAttribute("icon") || "";
     const label = this.getAttribute("label") || "";
     const size = this.getAttribute("size") || "md";
     const danger = this.hasAttribute("danger");
-    const btn = document.createElement("button");
-    btn.type = "button";
+    let btn = this.querySelector("button");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      this.appendChild(btn);
+    }
     btn.className = `jot-btn-icon jot-btn-icon--${size}${danger ? " jot-btn-icon--danger" : ""}`;
     btn.setAttribute("aria-label", label);
     btn.title = label;
     btn.innerHTML = ICONS[icon] || "";
-    this.appendChild(btn);
   }
 }
 

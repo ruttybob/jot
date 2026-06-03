@@ -255,7 +255,7 @@ switch (subCommand) {
   case "list": {
     const payload = await request(instance, "GET", "/api/notes");
     for (const note of payload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.locked ? "\t[locked]" : ""}`);
     }
     break;
   }
@@ -269,7 +269,7 @@ switch (subCommand) {
     const searchEndpoint = `/api/notes?q=${encodeURIComponent(searchQuery)}`;
     const searchPayload = await request(instance, "GET", searchEndpoint);
     for (const note of searchPayload.notes) {
-      console.log(`${note.id}\t${note.title}\t${note.updatedAt}`);
+      console.log(`${note.id}\t${note.title}\t${note.updatedAt}${note.locked ? "\t[locked]" : ""}`);
     }
     break;
   }

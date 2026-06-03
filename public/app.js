@@ -111,6 +111,7 @@
     showResolved: false,
     showComments: true,
     modalOpen: false,
+    listTab: "active",  // "active" | "locked"
   };
 
   if (page === "list") {
@@ -142,6 +143,10 @@
           </div>
         </header>
         <main class="list-page">
+          <div class="list-tabs" id="listTabs">
+            <button type="button" class="list-tab active" data-tab="active">Active</button>
+            <button type="button" class="list-tab" data-tab="locked">Locked</button>
+          </div>
           <div class="list-search-wrap">
             <input class="list-search" id="searchInput" type="text" placeholder="Search notes" autocomplete="off" />
           </div>
@@ -166,6 +171,17 @@
     logoutButton.addEventListener("click", logoutOwner);
     settingsButton.addEventListener("click", () => openSettingsModal());
 
+    const listTabs = document.getElementById("listTabs");
+    listTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-tab]");
+      if (!tab) return;
+      if (tab.dataset.tab === state.listTab) return;
+      state.listTab = tab.dataset.tab;
+      listTabs.querySelectorAll(".list-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      loadNotes(searchInput.value);
+    });
+
     searchInput.addEventListener("input", () => {
       clearTimeout(state.searchTimer);
       state.searchTimer = setTimeout(() => {
@@ -178,8 +194,34 @@
       if (deleteBtn) {
         event.stopPropagation();
         const id = deleteBtn.dataset.noteId;
-        if (!id || !confirm("Delete this note?")) return;
+        const isLocked = deleteBtn.dataset.locked === "true";
+        if (!id) return;
+        if (isLocked) {
+          if (!confirm("This note is locked. Unlock and delete?")) return;
+          try {
+            await api(`/api/notes/${id}`, { method: "PUT", body: { locked: false } });
+          } catch (e) {
+            console.error("Failed to unlock note:", e);
+            return;
+          }
+        } else {
+          if (!confirm("Delete this note?")) return;
+        }
         await api(`/api/notes/${id}`, { method: "DELETE" });
+        loadNotes(searchInput.value);
+        return;
+      }
+      const lockBtn = event.target.closest(".note-lock-btn") || event.target.closest("jot-icon-button.note-lock-btn");
+      if (lockBtn) {
+        event.stopPropagation();
+        const id = lockBtn.dataset.noteId;
+        const locked = lockBtn.dataset.locked === "true" ? false : true;
+        try {
+          await api(`/api/notes/${id}`, { method: "PUT", body: { locked } });
+        } catch (e) {
+          console.error("Failed to toggle lock:", e);
+          return;
+        }
         loadNotes(searchInput.value);
         return;
       }
@@ -275,7 +317,8 @@
     }
 
     async function loadNotes(query) {
-      const response = await api(`/api/notes?q=${encodeURIComponent(query)}`);
+      const locked = state.listTab === "locked" ? "true" : state.listTab === "active" ? "false" : "";
+      const response = await api(`/api/notes?q=${encodeURIComponent(query)}${locked ? `&locked=${locked}` : ""}`);
       const hasNotes = response.notes.length > 0;
       const hasQuery = query.trim().length > 0;
 
@@ -294,13 +337,16 @@
         ? response.notes
             .map(
               (note) => `
-                <div class="note-row" data-note-id="${escapeHtml(note.id)}">
-                  <div class="note-row-content">
+                <div class="note-row${note.locked ? " note-row--locked" : ""}" data-note-id="${escapeHtml(note.id)}">
+                  <div class="note-row-top">
                     <div class="note-row-title">${escapeHtml(note.title || "untitled")}</div>
-                    <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
-                  <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" danger></jot-icon-button>
+                  <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>
+                  <div class="note-row-actions">
+                    <jot-icon-button icon="${note.locked ? "lock" : "unlock"}" label="${note.locked ? "Unlock" : "Lock"}" size="sm" class="note-lock-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}"></jot-icon-button>
+                    <jot-icon-button icon="trash" label="Delete" size="sm" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}" danger></jot-icon-button>
+                  </div>
                 </div>
               `,
             )
@@ -408,6 +454,36 @@
     const agentButton = document.getElementById("agentButton");
     if (agentButton) {
       agentButton.addEventListener("click", () => openAgentModal(refs));
+    }
+
+    const lockButton = document.getElementById("lockButton");
+    function updateLockButton() {
+      if (!lockButton) return;
+      const locked = state.note?.locked || false;
+      lockButton.setAttribute("icon", locked ? "lock" : "unlock");
+      lockButton.setAttribute("label", locked ? "Unlock note" : "Lock note");
+      if (locked) {
+        lockButton.classList.add("note-locked-active");
+      } else {
+        lockButton.classList.remove("note-locked-active");
+      }
+    }
+    if (lockButton) {
+      updateLockButton();
+      lockButton.addEventListener("click", async () => {
+        if (!state.note) return;
+        const nextLocked = !state.note.locked;
+        try {
+          const payload = await api(`/api/notes/${noteId}`, {
+            method: "PUT",
+            body: { locked: nextLocked },
+          });
+          state.note.locked = nextLocked;
+          updateLockButton();
+        } catch (e) {
+          console.error("Failed to toggle lock:", e);
+        }
+      });
     }
 
     if (resolvedButton) {
@@ -800,6 +876,7 @@
       if (refsArg.saveStatus) {
         refsArg.saveStatus.textContent = publicMode ? "" : "Saved";
       }
+      updateLockButton();
       updateResolvedButton(refsArg.resolvedButton);
       updateCommentsButton(refsArg.commentsButton);
       syncThreadLayout(refsArg);
@@ -831,6 +908,7 @@
           <div class="topbar-right">
             <jot-icon-button icon="preview" label="Preview" id="previewFab"></jot-icon-button>
             <jot-icon-button icon="robot" label="Agent setup" id="agentButton"></jot-icon-button>
+            <jot-icon-button icon="unlock" label="Lock note" id="lockButton"></jot-icon-button>
             <div class="share-popover-wrap" id="sharePopoverWrap">
               <jot-icon-button icon="share" label="Share" id="shareButton"></jot-icon-button>
               <div class="share-popover hidden" id="sharePopover"></div>

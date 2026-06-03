@@ -334,7 +334,7 @@
 
     async function loadNotes(query) {
       const archived = state.listTab === "archived" ? "true" : "";
-      const locked = state.listTab === "locked" ? "true" : "";
+      const locked = state.listTab === "locked" ? "true" : state.listTab === "active" ? "false" : "";
       const response = await api(`/api/notes?q=${encodeURIComponent(query)}${archived ? `&archived=${archived}` : ""}${locked ? `&locked=${locked}` : ""}`);
       const hasNotes = response.notes.length > 0;
       const hasQuery = query.trim().length > 0;
@@ -356,7 +356,7 @@
               (note) => `
                 <div class="note-row${note.archived ? " note-row--archived" : ""}${note.locked ? " note-row--locked" : ""}" data-note-id="${escapeHtml(note.id)}">
                   <div class="note-row-top">
-                    <div class="note-row-title">${note.locked ? `<span class="note-row-lock-icon">\u{1F512}</span> ` : ""}${escapeHtml(note.title || "untitled")}</div>
+                    <div class="note-row-title">${escapeHtml(note.title || "untitled")}</div>
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
                   <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>

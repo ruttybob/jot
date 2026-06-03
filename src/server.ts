@@ -610,8 +610,9 @@ app.delete("/api/notes/:id", requireOwnerApi, (req, res) => {
 app.get("/api/notes", requireOwnerApi, (req, res) => {
   const query = String(req.query.q || "");
   const archived = String(req.query.archived || "");
+  const locked = String(req.query.locked || "");
   // archived: "true" = только архивные, "any" = все, ""/"false" = только активные
-  const results = searchNotes(query, archived ? { archived } : undefined);
+  const results = searchNotes(query, { archived: archived || undefined, locked: locked || undefined });
   res.json({ ok: true, notes: results });
 });
 
@@ -1626,15 +1627,22 @@ function persistNote(note: NoteRecord, broadcastUpdate = true) {
   }
 }
 
-function searchNotes(query: string, options?: { archived?: string }) {
+function searchNotes(query: string, options?: { archived?: string; locked?: string }) {
   const needle = query.trim().toLowerCase();
   const archivedParam = options?.archived || "false";
+  const lockedParam = options?.locked;
   return Array.from(notes.values())
     .filter((note) => {
       // Фильтрация по статусу архивации
       if (archivedParam === "true") return note.archived;
       if (archivedParam === "any") return true;
       return !note.archived; // по умолчанию — только активные
+    })
+    .filter((note) => {
+      // Фильтрация по статусу блокировки
+      if (lockedParam === "true") return note.locked;
+      if (lockedParam === "false") return !note.locked;
+      return true; // без фильтра — показать все
     })
     .map((note) => summarizeNote(note, needle))
     .filter((note) => {

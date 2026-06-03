@@ -111,7 +111,7 @@
     showResolved: false,
     showComments: true,
     modalOpen: false,
-    archiveTab: "active",  // "active" | "archived"
+    listTab: "active",  // "active" | "archived" | "locked"
   };
 
   if (page === "list") {
@@ -145,6 +145,7 @@
         <main class="list-page">
           <div class="list-tabs" id="listTabs">
             <button type="button" class="list-tab active" data-tab="active">Active</button>
+            <button type="button" class="list-tab" data-tab="locked">Locked</button>
             <button type="button" class="list-tab" data-tab="archived">Archive</button>
           </div>
           <div class="list-search-wrap">
@@ -175,8 +176,8 @@
     listTabs.addEventListener("click", (event) => {
       const tab = event.target.closest("[data-tab]");
       if (!tab) return;
-      if (tab.dataset.tab === state.archiveTab) return;
-      state.archiveTab = tab.dataset.tab;
+      if (tab.dataset.tab === state.listTab) return;
+      state.listTab = tab.dataset.tab;
       listTabs.querySelectorAll(".list-tab").forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       loadNotes(searchInput.value);
@@ -209,6 +210,20 @@
           if (!confirm("Delete this note?")) return;
         }
         await api(`/api/notes/${id}`, { method: "DELETE" });
+        loadNotes(searchInput.value);
+        return;
+      }
+      const lockBtn = event.target.closest(".note-lock-btn") || event.target.closest("jot-icon-button.note-lock-btn");
+      if (lockBtn) {
+        event.stopPropagation();
+        const id = lockBtn.dataset.noteId;
+        const locked = lockBtn.dataset.locked === "true" ? false : true;
+        try {
+          await api(`/api/notes/${id}`, { method: "PUT", body: { locked } });
+        } catch (e) {
+          console.error("Failed to toggle lock:", e);
+          return;
+        }
         loadNotes(searchInput.value);
         return;
       }
@@ -318,8 +333,9 @@
     }
 
     async function loadNotes(query) {
-      const archived = state.archiveTab === "archived" ? "true" : "";
-      const response = await api(`/api/notes?q=${encodeURIComponent(query)}${archived ? `&archived=${archived}` : ""}`);
+      const archived = state.listTab === "archived" ? "true" : "";
+      const locked = state.listTab === "locked" ? "true" : "";
+      const response = await api(`/api/notes?q=${encodeURIComponent(query)}${archived ? `&archived=${archived}` : ""}${locked ? `&locked=${locked}` : ""}`);
       const hasNotes = response.notes.length > 0;
       const hasQuery = query.trim().length > 0;
 
@@ -345,7 +361,7 @@
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
                   <jot-icon-button icon="${note.archived ? "unarchive" : "archive"}" label="${note.archived ? "Unarchive" : "Archive"}" class="note-archive-btn" data-note-id="${escapeHtml(note.id)}" data-archived="${note.archived ? "true" : "false"}"></jot-icon-button>
-                  ${note.locked ? `<jot-icon-button icon="lock" label="Locked" class="note-locked-indicator" data-note-id="${escapeHtml(note.id)}" disabled></jot-icon-button>` : ""}
+                  <jot-icon-button icon="${note.locked ? "lock" : "unlock"}" label="${note.locked ? "Unlock" : "Lock"}" class="note-lock-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}"></jot-icon-button>
                   <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}" danger></jot-icon-button>
                 </div>
               `,

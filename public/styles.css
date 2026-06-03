@@ -223,11 +223,12 @@ input:focus, textarea:focus { border-color: var(--muted); }
 .note-row--archived .note-row-title { color: var(--muted-2); }
 .note-row--archived .note-row-snippet { color: var(--muted-2); }
 
-.note-locked-indicator {
-  opacity: 0.6;
+.note-lock-btn button {
+  opacity: 0.5;
 }
 
-.note-locked-active button {
+.note-lock-btn[data-locked="true"] button {
+  opacity: 1;
   color: var(--accent, #4285f4);
 }
 

@@ -140,8 +140,8 @@ jot-icon-button, jot-button { display: inline-flex; }
 .jot-btn-icon--danger:hover { color: var(--danger); }
 .jot-btn-icon--md { width: 34px; height: 34px; }
 .jot-btn-icon--md svg { width: 16px; height: 16px; }
-.jot-btn-icon--sm { width: 24px; height: 24px; }
-.jot-btn-icon--sm svg { width: 13px; height: 13px; }
+.jot-btn-icon--sm { width: 27px; height: 27px; }
+.jot-btn-icon--sm svg { width: 16px; height: 16px; }
 
 .jot-btn {
   display: inline-flex; align-items: center; justify-content: center;

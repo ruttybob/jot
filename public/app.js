@@ -354,15 +354,17 @@
         ? response.notes
             .map(
               (note) => `
-                <div class="note-row${note.archived ? " note-row--archived" : ""}" data-note-id="${escapeHtml(note.id)}">
-                  <div class="note-row-content">
-                    <div class="note-row-title">${escapeHtml(note.title || "untitled")}</div>
-                    <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>
+                <div class="note-row${note.archived ? " note-row--archived" : ""}${note.locked ? " note-row--locked" : ""}" data-note-id="${escapeHtml(note.id)}">
+                  <div class="note-row-top">
+                    <div class="note-row-title">${note.locked ? `<span class="note-row-lock-icon">\u{1F512}</span> ` : ""}${escapeHtml(note.title || "untitled")}</div>
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>
                   </div>
-                  <jot-icon-button icon="${note.archived ? "unarchive" : "archive"}" label="${note.archived ? "Unarchive" : "Archive"}" class="note-archive-btn" data-note-id="${escapeHtml(note.id)}" data-archived="${note.archived ? "true" : "false"}"></jot-icon-button>
-                  <jot-icon-button icon="${note.locked ? "lock" : "unlock"}" label="${note.locked ? "Unlock" : "Lock"}" class="note-lock-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}"></jot-icon-button>
-                  <jot-icon-button icon="trash" label="Delete note" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}" danger></jot-icon-button>
+                  <div class="note-row-snippet">${escapeHtml(note.snippet || "Empty note")}</div>
+                  <div class="note-row-actions">
+                    <jot-icon-button icon="${note.locked ? "lock" : "unlock"}" label="${note.locked ? "Unlock" : "Lock"}" size="sm" class="note-lock-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}"></jot-icon-button>
+                    <jot-icon-button icon="${note.archived ? "unarchive" : "archive"}" label="${note.archived ? "Unarchive" : "Archive"}" size="sm" class="note-archive-btn" data-note-id="${escapeHtml(note.id)}" data-archived="${note.archived ? "true" : "false"}"></jot-icon-button>
+                    <jot-icon-button icon="trash" label="Delete" size="sm" class="note-delete-btn" data-note-id="${escapeHtml(note.id)}" data-locked="${note.locked ? "true" : "false"}" danger></jot-icon-button>
+                  </div>
                 </div>
               `,
             )

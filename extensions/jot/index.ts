@@ -125,7 +125,17 @@ function getActiveInstance(ctx: {
 
 // ── jot note operations ─────────────────────────────────────────
 
-/** Create a jot note with body content. Returns noteId. */
+/**
+ * Create a jot note with body content. Returns noteId.
+ *
+ * Two-step (per jot skill pattern):
+ *   1. `jot <inst> create <title>` — creates note with empty body, returns `<id>\t<title>`
+ *   2. `jot <inst> update <id> markdown <content>` — fills the body
+ *
+ * The previous one-shot `create <title> markdown <content>` form was broken:
+ * `jot create` joins all positional args into the title, so the body was always empty
+ * and the title swallowed the literal word `markdown` plus the whole file content.
+ */
 function createNote(
   instanceName: string,
   title: string,
@@ -133,11 +143,18 @@ function createNote(
 ): string {
   const createOut = execFileSync(
     "jot",
-    [instanceName, "create", title, "markdown", content],
+    [instanceName, "create", title],
     { encoding: "utf-8", timeout: 15000 },
   );
   const noteId = createOut.trim().split(/\s+/)[0];
   if (!noteId) throw new Error(`Failed to create note: ${createOut}`);
+
+  execFileSync(
+    "jot",
+    [instanceName, "update", noteId, "markdown", content],
+    { encoding: "utf-8", timeout: 15000 },
+  );
+
   return noteId;
 }
 

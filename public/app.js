@@ -1083,11 +1083,8 @@
     setTimeout(() => document.addEventListener("click", closeHandler), 0);
   }
 
-  function openAgentModal(refs) {
-    const baseUrl = `${location.protocol}//${location.host}`;
-    const currentNoteId = state.note?.id || "<note-id>";
-    const isOwnerView = state.viewer?.isOwner;
-
+  function buildCliPrompt(isOwnerView, ctx) {
+    const { baseUrl, currentNoteId, shareUrl } = ctx;
     const lines = [];
     if (isOwnerView) {
       lines.push(
@@ -1130,7 +1127,6 @@
         `jot --help`,
       );
     } else {
-      const shareUrl = `${baseUrl}/s/${state.note?.shareId || shareId}`;
       lines.push(
         `# Your user wants you to interact with a shared jot note using the CLI below.`,
         `# Run the commands as needed to read, edit, and comment on the note.`,
@@ -1156,7 +1152,46 @@
         `jot --help`,
       );
     }
-    const instructions = lines.join("\n");
+    return lines.join("\n");
+  }
+
+  function buildSyncPrompt(isOwnerView, ctx) {
+    const { currentNoteId } = ctx;
+    if (isOwnerView) {
+      return [
+        `- \`jot my-jot read-threads ${currentNoteId}\` — read unresolved threads`,
+        `- For each unresolved thread: \`reply\` with a proposed change, tell the user what you proposed, **wait for confirmation**`,
+        `- After confirmation: \`resolve\` the thread, \`edit\` the note if the thread requires changes`,
+        ``,
+        `## Rules`,
+        ``,
+        `- No confirmation → don't resolve, don't edit`,
+        `- All replies and edits in Russian`,
+      ].join("\n");
+    }
+    return [
+      `- \`jot my-jot read\` — read the note with threads (shared-mode, no instance)`,
+      `- For each unresolved thread: propose a \`reply\`, tell the user what you proposed, **wait for confirmation**`,
+      `- After confirmation: \`reply\` to the thread`,
+      ``,
+      `## Rules`,
+      ``,
+      `- No confirmation → don't reply`,
+      `- All replies in Russian`,
+    ].join("\n");
+  }
+
+  function openAgentModal(refs) {
+    const isOwnerView = state.viewer?.isOwner;
+    const baseUrl = `${location.protocol}//${location.host}`;
+    const currentNoteId = state.note?.id || "<note-id>";
+    const shareUrl = `${baseUrl}/s/${state.note?.shareId || ""}`;
+    const ctx = { baseUrl, currentNoteId, shareUrl };
+
+    const prompts = {
+      cli: buildCliPrompt(isOwnerView, ctx),
+      sync: buildSyncPrompt(isOwnerView, ctx),
+    };
     const hint = isOwnerView
       ? "Create an API key in settings on the landing page, then give your agent these instructions:"
       : "Give your agent these instructions to interact with this note:";
@@ -1164,28 +1199,43 @@
     if (!refs.modalBackdrop) return;
     state.modalOpen = true;
     refs.modalBackdrop.classList.remove("hidden");
-    refs.modalBackdrop.innerHTML = `
-      <div class="modal agent-modal" role="dialog" aria-modal="true">
-        <div class="settings-header">
-          <h2 class="settings-title">Agent setup</h2>
-          <jot-icon-button icon="close" label="Close" id="agentModalClose"></jot-icon-button>
-        </div>
-        <p class="agent-hint">${escapeHtml(hint)}</p>
-        <pre class="agent-instructions"><code>${escapeHtml(instructions)}</code></pre>
-        <jot-button variant="ghost" size="sm" id="agentCopyBtn">copy to clipboard</jot-button>
-      </div>
-    `;
-
+    let activeTab = "cli";
     const close = () => { closeModal(refs); };
-    refs.modalBackdrop.querySelector("#agentModalClose").addEventListener("click", close);
     refs.modalBackdrop.addEventListener("click", (e) => { if (e.target === refs.modalBackdrop) close(); });
-    refs.modalBackdrop.querySelector("#agentCopyBtn").addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(instructions);
-        setButtonLabel(refs.modalBackdrop.querySelector("#agentCopyBtn"), "copied!");
-        setTimeout(() => setButtonLabel(refs.modalBackdrop.querySelector("#agentCopyBtn"), "copy to clipboard"), 1500);
-      } catch {}
-    });
+
+    const render = () => {
+      refs.modalBackdrop.innerHTML = `
+        <div class="modal agent-modal" role="dialog" aria-modal="true">
+          <div class="settings-header">
+            <h2 class="settings-title">Agent setup</h2>
+            <jot-icon-button icon="close" label="Close" id="agentModalClose"></jot-icon-button>
+          </div>
+          <p class="agent-hint">${escapeHtml(hint)}</p>
+          <div class="agent-tabs">
+            <button data-tab="cli" class="${activeTab === "cli" ? "active" : ""}">Agent CLI</button>
+            <button data-tab="sync" class="${activeTab === "sync" ? "active" : ""}">Sync threads</button>
+          </div>
+          <pre class="agent-instructions"><code>${escapeHtml(prompts[activeTab])}</code></pre>
+          <jot-button variant="ghost" size="sm" id="agentCopyBtn">copy to clipboard</jot-button>
+        </div>
+      `;
+      refs.modalBackdrop.querySelector("#agentModalClose").addEventListener("click", close);
+      refs.modalBackdrop.querySelectorAll(".agent-tabs button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          activeTab = btn.dataset.tab;
+          render();
+        });
+      });
+      refs.modalBackdrop.querySelector("#agentCopyBtn").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(prompts[activeTab]);
+          const btn = refs.modalBackdrop.querySelector("#agentCopyBtn");
+          setButtonLabel(btn, "copied!");
+          setTimeout(() => setButtonLabel(btn, "copy to clipboard"), 1500);
+        } catch {}
+      });
+    };
+    render();
   }
 
   function openIdentityModalAsync(refs) {

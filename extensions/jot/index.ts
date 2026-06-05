@@ -9,7 +9,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -135,8 +135,10 @@ function createNote(
   const tmpFile = `/tmp/jot-publish-${process.pid}-${Date.now()}.md`;
   writeFileSync(tmpFile, content, "utf-8");
   try {
-    const createOut = execSync(
-      `CONTENT=$(cat '${tmpFile}') && jot ${instanceName} create "${title.replace(/"/g, '\\"')}" markdown "$CONTENT"`,
+    const body = readFileSync(tmpFile, "utf-8");
+    const createOut = execFileSync(
+      "jot",
+      [instanceName, "create", title, "markdown", body],
       { encoding: "utf-8", timeout: 15000 },
     );
     const noteId = createOut.trim().split(/\s+/)[0];

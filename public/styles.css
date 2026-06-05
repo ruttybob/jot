@@ -271,6 +271,16 @@ input:focus, textarea:focus { border-color: var(--muted); }
 }
 .agent-instructions code { background: transparent; padding: 0; font-size: inherit; }
 .agent-modal jot-button { flex-shrink: 0; }
+.agent-tabs { display: flex; gap: 0.25rem; margin: 0 0 0.75rem; flex-shrink: 0; }
+.agent-tabs button {
+  background: transparent; border: 1px solid var(--code-border);
+  color: var(--muted); padding: 0.4rem 0.8rem; border-radius: 8px;
+  font-size: 0.82rem; cursor: pointer; font-family: inherit;
+}
+.agent-tabs button:hover { color: var(--text); border-color: var(--text); }
+.agent-tabs button.active {
+  background: var(--code-bg); color: var(--text); border-color: var(--text);
+}
 .settings-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
 .settings-section-title { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--muted); }
 .api-key-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.5rem; border-radius: 8px; gap: 0.75rem; }

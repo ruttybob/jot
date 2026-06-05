@@ -1201,7 +1201,11 @@
     refs.modalBackdrop.classList.remove("hidden");
     let activeTab = "cli";
     const close = () => { closeModal(refs); };
-    refs.modalBackdrop.addEventListener("click", (e) => { if (e.target === refs.modalBackdrop) close(); });
+    refs.modalBackdrop.addEventListener(
+      "click",
+      (e) => { if (e.target === refs.modalBackdrop) close(); },
+      { once: true },
+    );
 
     const render = () => {
       refs.modalBackdrop.innerHTML = `

@@ -15,7 +15,6 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { resolve, basename, dirname, relative, join } from "node:path";
@@ -132,21 +131,14 @@ function createNote(
   title: string,
   content: string,
 ): string {
-  const tmpFile = `/tmp/jot-publish-${process.pid}-${Date.now()}.md`;
-  writeFileSync(tmpFile, content, "utf-8");
-  try {
-    const body = readFileSync(tmpFile, "utf-8");
-    const createOut = execFileSync(
-      "jot",
-      [instanceName, "create", title, "markdown", body],
-      { encoding: "utf-8", timeout: 15000 },
-    );
-    const noteId = createOut.trim().split(/\s+/)[0];
-    if (!noteId) throw new Error(`Failed to create note: ${createOut}`);
-    return noteId;
-  } finally {
-    try { unlinkSync(tmpFile); } catch {}
-  }
+  const createOut = execFileSync(
+    "jot",
+    [instanceName, "create", title, "markdown", content],
+    { encoding: "utf-8", timeout: 15000 },
+  );
+  const noteId = createOut.trim().split(/\s+/)[0];
+  if (!noteId) throw new Error(`Failed to create note: ${createOut}`);
+  return noteId;
 }
 
 // ── Extension ───────────────────────────────────────────────────

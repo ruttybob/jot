@@ -965,7 +965,8 @@
       <div class="app-root">
         <header class="topbar public-page-topbar">
           <div class="topbar-left">
-            <jot-icon-button icon="edit" label="Back to editor" id="backToEditButton" class="hidden"></jot-icon-button>
+            <jot-icon-button icon="back" label="Back to notes" id="notesButton"></jot-icon-button>
+            <jot-icon-button icon="edit" label="Edit" id="backToEditButton" class="hidden"></jot-icon-button>
             <div>
               <div class="topbar-title" id="topbarTitle">note</div>
               ${subtitle}
@@ -997,7 +998,8 @@
       <div class="app-root">
         <header class="topbar public-page-topbar">
           <div class="topbar-left">
-            <jot-icon-button icon="edit" label="Back to editor" id="backToEditButton" class="hidden"></jot-icon-button>
+            <jot-icon-button icon="back" label="Back to notes" id="notesButton"></jot-icon-button>
+            <jot-icon-button icon="edit" label="Edit" id="backToEditButton" class="hidden"></jot-icon-button>
             <div>
               <div class="topbar-title" id="topbarTitle">note</div>
               <div class="topbar-title-subtle">editing as <span id="commenterLabel">anonymous</span> <button type="button" class="text-button change-name-btn" id="changeNameBtn">change</button></div>

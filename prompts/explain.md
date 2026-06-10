@@ -47,8 +47,8 @@ cat > /tmp/explain-note.md << 'EOF'
 <note content here>
 EOF
 
-ID=$(jot self create "Explain: <title>" | cut -f1)
-jot self update "$ID" markdown "$(cat /tmp/explain-note.md)"
-SHARE_URL=$(jot self share "$ID" comment | cut -f3)
+ID=$(jot main create "Explain: <title>" | cut -f1)
+jot main update "$ID" markdown "$(cat /tmp/explain-note.md)"
+SHARE_URL=$(jot main share "$ID" comment | cut -f3)
 open "$SHARE_URL"
 ```

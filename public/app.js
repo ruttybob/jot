@@ -909,6 +909,7 @@
         <header class="topbar">
           <div class="topbar-left">
             <jot-icon-button icon="back" label="Back to notes" id="notesButton"></jot-icon-button>
+            <jot-icon-button icon="message" label="View &amp; Comment" id="viewCommentButton"></jot-icon-button>
             <input id="titleInput" class="title-input" type="text" spellcheck="false" value="untitled" />
             <span class="status-text" id="saveStatus"></span>
           </div>
@@ -920,7 +921,6 @@
               <jot-icon-button icon="share" label="Share" id="shareButton"></jot-icon-button>
               <div class="share-popover hidden" id="sharePopover"></div>
             </div>
-            <jot-icon-button icon="message" label="View &amp; Comment" id="viewCommentButton"></jot-icon-button>
             <button type="button" class="jot-btn-icon jot-btn-icon--md theme-toggle" aria-label="Toggle theme">${themeIcon(document.documentElement.getAttribute("data-theme") || "dark")}</button>
           </div>
         </header>

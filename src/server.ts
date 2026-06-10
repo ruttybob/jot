@@ -91,6 +91,7 @@ type NoteSummary = {
   title: string;
   updatedAt: string;
   shareId: string;
+  shareAccess: ShareAccess;
   snippet: string;
   locked: boolean;
 };
@@ -1642,6 +1643,7 @@ function summarizeNote(note: NoteRecord, needle: string): NoteSummary {
     title: note.title,
     updatedAt: note.updatedAt,
     shareId: note.shareId,
+    shareAccess: note.shareAccess,
     snippet: buildSnippet(note, needle),
     locked: note.locked,
   };

@@ -227,7 +227,14 @@
       }
       const row = event.target.closest("[data-note-id]");
       if (!row) return;
-      window.location.href = `/notes/${row.dataset.noteId}`;
+      const { noteId, shareId, shareAccess } = row.dataset;
+      if (shareAccess === "none") {
+        await api(`/api/notes/${noteId}`, {
+          method: "PUT",
+          body: { shareAccess: "comment" },
+        });
+      }
+      window.location.href = `/s/${shareId}`;
     });
 
     loadNotes("");
@@ -337,7 +344,7 @@
         ? response.notes
             .map(
               (note) => `
-                <div class="note-row${note.locked ? " note-row--locked" : ""}" data-note-id="${escapeHtml(note.id)}">
+                <div class="note-row${note.locked ? " note-row--locked" : ""}" data-note-id="${escapeHtml(note.id)}" data-share-id="${escapeHtml(note.shareId)}" data-share-access="${escapeHtml(note.shareAccess)}">
                   <div class="note-row-top">
                     <div class="note-row-title">${escapeHtml(note.title || "untitled")}</div>
                     <div class="note-row-meta">${escapeHtml(formatDate(note.updatedAt))}</div>

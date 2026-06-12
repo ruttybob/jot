@@ -112,6 +112,7 @@
     showComments: true,
     modalOpen: false,
     listTab: "active",  // "active" | "locked"
+    viewMode: location.search.includes("view"),  // ?view → start in view mode
   };
 
   if (page === "list") {
@@ -227,14 +228,8 @@
       }
       const row = event.target.closest("[data-note-id]");
       if (!row) return;
-      const { noteId, shareId, shareAccess } = row.dataset;
-      if (shareAccess === "none") {
-        await api(`/api/notes/${noteId}`, {
-          method: "PUT",
-          body: { shareAccess: "comment" },
-        });
-      }
-      window.location.href = `/s/${shareId}`;
+      const { noteId } = row.dataset;
+      window.location.href = `/notes/${noteId}?view`;
     });
 
     loadNotes("");
@@ -444,19 +439,28 @@
     }
 
     const viewCommentButton = document.getElementById("viewCommentButton");
+    function updateViewMode() {
+      const workspace = document.querySelector(".workspace");
+      if (!workspace) return;
+      if (state.viewMode) {
+        workspace.classList.add("workspace--view");
+        viewCommentButton?.setAttribute("icon", "edit");
+        viewCommentButton?.setAttribute("label", "Edit");
+      } else {
+        workspace.classList.remove("workspace--view");
+        viewCommentButton?.setAttribute("icon", "message");
+        viewCommentButton?.setAttribute("label", "View & Comment");
+      }
+      requestAnimationFrame(() => syncThreadLayout(refs));
+    }
     if (viewCommentButton) {
-      viewCommentButton.addEventListener("click", async () => {
-        if (!state.note) return;
-        const access = state.note.shareAccess;
-        if (access !== "comment" && access !== "edit") {
-          await api(`/api/notes/${noteId}`, {
-            method: "PUT",
-            body: { shareAccess: "comment" },
-          });
-        }
-        window.location.href = `/s/${state.note.shareId}`;
+      viewCommentButton.addEventListener("click", () => {
+        state.viewMode = !state.viewMode;
+        updateViewMode();
       });
     }
+    // Apply initial view mode from ?view param
+    if (state.viewMode) updateViewMode();
 
     const agentButton = document.getElementById("agentButton");
     if (agentButton) {

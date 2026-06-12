@@ -318,6 +318,13 @@ input:focus, textarea:focus { border-color: var(--muted); }
   background: var(--input-bg); overflow: hidden; position: relative;
 }
 
+.workspace--view {
+  grid-template-columns: 1fr;
+}
+.workspace--view .editor-pane {
+  display: none;
+}
+
 .preview-controls {
   position: absolute; top: 0.5rem; right: 0.5rem; z-index: 10;
   display: flex; gap: 0.35rem;
@@ -544,10 +551,12 @@ input:focus, textarea:focus { border-color: var(--muted); }
 .inline-error { color: var(--danger); margin-top: 0.65rem; }
 .public-page-topbar .topbar-title-subtle { color: var(--muted); font-size: 0.95rem; }
 
-/* --- Wide public desktop: show rail --- */
+/* --- Wide public / view-mode desktop: show rail --- */
 @media (min-width: 1200px) {
   .preview-stage.public .thread-rail { display: block; }
   .preview-stage.public .preview-canvas { padding-right: calc(var(--thread-width) + 20px); }
+  .workspace--view .thread-rail { display: block; }
+  .workspace--view .preview-canvas { padding-right: calc(var(--thread-width) + 20px); }
 }
 
 /* --- Preview button (editor narrow only, in topbar) --- */

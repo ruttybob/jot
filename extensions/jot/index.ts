@@ -275,14 +275,33 @@ export default function jotExtension(pi: ExtensionAPI) {
     },
   });
 
-  // ── /jot:open — open jot instance in browser ─────────────────
+  // ── /jot:open [noteId] — open jot instance or specific note ──
   pi.registerCommand("jot:open", {
-    description: "Open jot instance in browser",
-    handler: async (_args, ctx) => {
+    description: "Open jot: /jot:open [noteId] — leave empty for home, or pick a note",
+    getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
+      const instanceName = loadGlobalInstance();
+      try {
+        const out = execFileSync("jot", [instanceName, "list"], {
+          encoding: "utf-8",
+          timeout: 10000,
+        });
+        const items: AutocompleteItem[] = [];
+        for (const line of out.trim().split("\n")) {
+          const [id, title, date] = line.split("\t");
+          if (!id) continue;
+          if (prefix && !id.startsWith(prefix) && !(title || "").toLowerCase().includes(prefix.toLowerCase())) continue;
+          items.push({ value: id, label: title || id, description: (date || "").slice(0, 10) });
+        }
+        return items.length > 0 ? items : null;
+      } catch {
+        return null;
+      }
+    },
+    handler: async (args, ctx) => {
       const instanceName = getActiveInstance(ctx);
-      const url = getInstanceUrl(instanceName);
+      const baseUrl = getInstanceUrl(instanceName);
 
-      if (!url) {
+      if (!baseUrl) {
         ctx.ui.notify(
           `Could not find URL for instance "${instanceName}". Run /jot to select one.`,
           "error",
@@ -290,9 +309,15 @@ export default function jotExtension(pi: ExtensionAPI) {
         return;
       }
 
+      const noteId = args.trim();
+      const url = noteId ? `${baseUrl}/notes/${noteId}?view` : baseUrl;
+
       try {
         execFileSync("open", [url], { timeout: 5000 });
-        ctx.ui.notify(`Opened ${instanceName}: ${url}`, "info");
+        ctx.ui.notify(
+          `Opened ${instanceName}: ${noteId ? `note ${noteId}` : "home"}`,
+          "info",
+        );
       } catch (err: any) {
         ctx.ui.notify(`Failed to open: ${err.message}`, "error");
       }

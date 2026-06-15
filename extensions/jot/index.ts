@@ -8,7 +8,17 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import {
+  Container,
+  SelectList,
+  Text,
+  truncateToWidth,
+  visibleWidth,
+  type AutocompleteItem,
+  type SelectItem,
+  type Theme,
+  type TUI,
+} from "@earendil-works/pi-tui";
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -299,6 +309,30 @@ export function buildNoteTitle(markdown: string, now: Date): string {
   const mm = String(now.getMinutes()).padStart(2, "0");
   const label = base || "Agent response";
   return `${label} — ${hh}:${mm}`;
+}
+
+function padLine(text: string, width: number): string {
+  const truncated = truncateToWidth(text, width, "");
+  const visible = visibleWidth(truncated);
+  return `${truncated}${" ".repeat(Math.max(0, width - visible))}`;
+}
+
+function frameBox(lines: string[], width: number, theme: Theme, title: string): string[] {
+  const border = (t: string) => theme.fg("borderAccent", t);
+  const pad = 1;
+  const innerWidth = Math.max(1, width - 2 - pad * 2);
+  const titlePlain = ` ${title} `;
+  const fillTop = Math.max(1, width - 2 - visibleWidth(titlePlain));
+  const top = `${border("┏")}${theme.fg("accent", titlePlain)}${border("━".repeat(fillTop))}${border("┓")}`;
+  const blank = `${border("┃")}${" ".repeat(width - 2)}${border("┃")}`;
+
+  const framed = [top, blank];
+  for (const line of lines) {
+    framed.push(`${border("┃")}${" ".repeat(pad)}${padLine(line, innerWidth)}${" ".repeat(pad)}${border("┃")}`);
+  }
+  framed.push(blank);
+  framed.push(`${border("┗")}${border("━".repeat(width - 2))}${border("┛")}`);
+  return framed.map((l) => truncateToWidth(l, width, ""));
 }
 
 // ── Extension ───────────────────────────────────────────────────

@@ -160,6 +160,11 @@ function createNote(
 
 // ── Agent-end message picker ────────────────────────────────────
 
+/** First non-blank line of a markdown string, or "" if none. */
+function firstMeaningfulLine(markdown: string): string {
+  return markdown.split("\n").find((l) => l.trim().length > 0) ?? "";
+}
+
 export interface AgentEndMessage {
   /** Sequential index among the returned messages (0-based), NOT the raw branch position. */
   index: number;
@@ -192,13 +197,27 @@ export function getAgentEndMessages(branch: any[]): AgentEndMessage[] {
     if (textBlocks.length === 0) continue;
 
     const markdown = textBlocks.map((c) => c.text).join("\n\n");
-    const firstLine = markdown.split("\n").find((l) => l.trim().length > 0) ?? "";
+    const firstLine = firstMeaningfulLine(markdown);
     const preview = firstLine.trimStart().replace(/^#+\s*/, "").slice(0, 80);
     messages.push({ index: messageIndex, markdown, preview });
     messageIndex++;
   }
 
   return messages;
+}
+
+/**
+ * Build a jot note title from an agent response.
+ * First meaningful line (without leading #), truncated to 50 chars, + " — HH:MM".
+ */
+export function buildNoteTitle(markdown: string, now: Date): string {
+  const firstLine = firstMeaningfulLine(markdown);
+  const cleaned = firstLine.trimStart().replace(/^#+\s*/, "").trim();
+  const base = cleaned.length > 50 ? cleaned.slice(0, 50) : cleaned;
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const label = base || "Agent response";
+  return `${label} — ${hh}:${mm}`;
 }
 
 // ── Extension ───────────────────────────────────────────────────

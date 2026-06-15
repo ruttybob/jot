@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getAgentEndMessages } from "../../../extensions/jot/index.js";
+import { getAgentEndMessages, buildNoteTitle } from "../../../extensions/jot/index.js";
 
 // Helper: build a SessionMessageEntry.
 function msg(
@@ -76,5 +76,38 @@ describe("getAgentEndMessages", () => {
       msg("1", "assistant", [{ type: "text", text: "ok" }]),
     ];
     expect(getAgentEndMessages(branch as any)).toHaveLength(1);
+  });
+});
+
+describe("buildNoteTitle", () => {
+  it("первая meaningful строка без # + HH:MM", () => {
+    const now = new Date("2026-06-15T22:51:00");
+    const title = buildNoteTitle("# Fix the preview bug\n\nBody text", now);
+    expect(title).toBe("Fix the preview bug — 22:51");
+  });
+
+  it("обрезает длинную первую строку до 50 символов", () => {
+    const now = new Date("2026-06-15T09:05:00");
+    const long = "x".repeat(80);
+    const title = buildNoteTitle(long, now);
+    expect(title.length).toBeLessThanOrEqual(58); // 50 + " — 09:05"
+    expect(title).toMatch(/ — 09:05$/);
+  });
+
+  it("fallback для пустого markdown", () => {
+    const now = new Date("2026-06-15T00:00:00");
+    const title = buildNoteTitle("   \n  ", now);
+    expect(title).toBe("Agent response — 00:00");
+  });
+
+  it("пропускает пустые строки в начале", () => {
+    const now = new Date("2026-06-15T14:30:00");
+    const title = buildNoteTitle("\n\n  \nActual content here", now);
+    expect(title).toBe("Actual content here — 14:30");
+  });
+
+  it("strip # даже при отступе перед заголовком", () => {
+    const now = new Date("2026-06-15T22:51:00");
+    expect(buildNoteTitle("   # Indented\nbody", now)).toBe("Indented — 22:51");
   });
 });

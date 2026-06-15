@@ -158,6 +158,49 @@ function createNote(
   return noteId;
 }
 
+// ── Agent-end message picker ────────────────────────────────────
+
+export interface AgentEndMessage {
+  /** Sequential index among the returned messages (0-based), NOT the raw branch position. */
+  index: number;
+  markdown: string;
+  preview: string;
+}
+
+/**
+ * Extract final agent responses (assistant messages without tool_use blocks)
+ * from a session branch. Intermediate turns (text + tool_use) are skipped —
+ * they represent steps, not the final answer.
+ */
+export function getAgentEndMessages(branch: any[]): AgentEndMessage[] {
+  const messages: AgentEndMessage[] = [];
+  let messageIndex = 0;
+
+  for (const entry of branch) {
+    if (!entry || entry.type !== "message") continue;
+    const message = entry.message;
+    if (!message || message.role !== "assistant") continue;
+
+    const content = Array.isArray(message.content) ? message.content : [];
+    // Skip intermediate turns: any tool_use block means it's a step, not final.
+    if (content.some((c: any) => c?.type === "tool_use")) continue;
+
+    const textBlocks = content.filter(
+      (c: any): c is { type: "text"; text: string } =>
+        c?.type === "text" && typeof c.text === "string" && c.text.trim().length > 0,
+    );
+    if (textBlocks.length === 0) continue;
+
+    const markdown = textBlocks.map((c) => c.text).join("\n\n");
+    const firstLine = markdown.split("\n").find((l) => l.trim().length > 0) ?? "";
+    const preview = firstLine.trimStart().replace(/^#+\s*/, "").slice(0, 80);
+    messages.push({ index: messageIndex, markdown, preview });
+    messageIndex++;
+  }
+
+  return messages;
+}
+
 // ── Extension ───────────────────────────────────────────────────
 
 export default function jotExtension(pi: ExtensionAPI) {

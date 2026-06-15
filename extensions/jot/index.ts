@@ -335,6 +335,78 @@ function frameBox(lines: string[], width: number, theme: Theme, title: string): 
   return framed.map((l) => truncateToWidth(l, width, ""));
 }
 
+/**
+ * Show overlay picker of final agent responses. Returns selected markdown or null.
+ * If only one message, returns it directly (no picker).
+ */
+async function pickAgentEndMessage(ctx: {
+  sessionManager: { getBranch(): any[] };
+  ui: {
+    notify(m: string, level?: string): void;
+    custom<T>(factory: (...args: any[]) => any, options?: Record<string, unknown>): Promise<T>;
+    theme: Theme;
+  };
+}): Promise<string | null> {
+  const messages = getAgentEndMessages(ctx.sessionManager.getBranch());
+
+  if (messages.length === 0) {
+    ctx.ui.notify("No agent responses found in the current branch.", "warning");
+    return null;
+  }
+
+  if (messages.length === 1) {
+    return messages[0]!.markdown;
+  }
+
+  const items: SelectItem[] = messages.map((msg, i) => ({
+    value: String(i),
+    label: `Response ${msg.index + 1}`,
+    description: msg.preview,
+  }));
+
+  const result = await ctx.ui.custom<string | null>(
+    (tui: TUI, theme: Theme, _kb: any, done: (v: string | null) => void) => {
+      const container = new Container();
+      container.addChild(new Text("", 0));
+
+      const selectList = new SelectList(items, Math.min(items.length, 10), {
+        selectedPrefix: (text: string) => theme.fg("accent", text),
+        selectedText: (text: string) => theme.fg("accent", text),
+        description: (text: string) => theme.fg("muted", text),
+      });
+
+      // Start with the last (most recent) item selected.
+      selectList.setSelectedIndex(items.length - 1);
+
+      selectList.onSelect = (item: SelectItem) => done(item.value);
+      selectList.onCancel = () => done(null);
+      container.addChild(selectList);
+
+      container.addChild(new Text(theme.fg("dim", "↑↓ navigate • enter select • esc cancel"), 1));
+
+      return {
+        render(width: number) {
+          const innerWidth = Math.max(1, width - 4);
+          const lines = container.render(innerWidth);
+          return frameBox(lines, width, theme, "Publish to Jot");
+        },
+        invalidate() {
+          container.invalidate();
+        },
+        handleInput(data: string) {
+          selectList.handleInput(data);
+          tui.requestRender();
+        },
+      };
+    },
+    { overlay: true, overlayOptions: { anchor: "center", maxHeight: "80%", width: 80 } },
+  );
+
+  if (result === null) return null;
+  const selected = messages[Number(result)];
+  return selected ? selected.markdown : null;
+}
+
 // ── Extension ───────────────────────────────────────────────────
 
 export default function jotExtension(pi: ExtensionAPI) {

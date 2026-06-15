@@ -32,7 +32,7 @@ export class Container {
 
 export class Text {
   private text: string;
-  constructor(text?: any) {
+  constructor(text?: any, _alignment?: any) {
     this.text = typeof text === "string" ? text : "";
   }
   invalidate() {}
@@ -55,6 +55,9 @@ export class SelectList {
     } else if (data === "\x1b[B") {
       this.selectedIndex = Math.min(this.items.length - 1, this.selectedIndex + 1);
     }
+  }
+  setSelectedIndex(index: number): void {
+    this.selectedIndex = Math.max(0, Math.min(this.items.length - 1, index));
   }
   invalidate() {}
   render(): string[] {

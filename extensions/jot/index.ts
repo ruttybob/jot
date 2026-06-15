@@ -3,7 +3,7 @@
  *
  * Commands:
  *   /jot            — select jot instance (saved globally)
- *   /jot:public <path> — publish file to jot manually
+ *   /jot:public [path] — publish file, or pick an agent response (no args)
  *   /jot:open       — open jot instance in browser
  */
 
@@ -450,9 +450,9 @@ export default function jotExtension(pi: ExtensionAPI) {
     },
   });
 
-  // ── /jot:public <path> — publish file manually ───────────────
+  // ── /jot:public [path] — publish file or pick agent response ──
   pi.registerCommand("jot:public", {
-    description: "Publish a file to jot: /jot:public <path>",
+    description: "Publish to jot: /jot:public <path> (file) or /jot:public (pick agent response)",
     getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
       const cwd = process.cwd();
       const dirs = ["plans", "specs"] as const;
@@ -476,30 +476,41 @@ export default function jotExtension(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const filePath = args.trim();
-      if (!filePath) {
-        ctx.ui.notify("Usage: /jot:public <path-to-file>", "warning");
-        return;
-      }
-
       const instanceName = getActiveInstance(ctx);
+      const baseUrl = getInstanceUrl(instanceName);
+      const filePath = args.trim();
 
-      const absPath = resolve(ctx.cwd, filePath);
-      if (!existsSync(absPath)) {
-        ctx.ui.notify(`File not found: ${absPath}`, "error");
-        return;
+      // Resolve content + title.
+      let content: string;
+      let title: string;
+      let sourceDescription: string;
+
+      if (filePath) {
+        // File mode (unchanged behavior).
+        const absPath = resolve(ctx.cwd, filePath);
+        if (!existsSync(absPath)) {
+          ctx.ui.notify(`File not found: ${absPath}`, "error");
+          return;
+        }
+        content = readFileSync(absPath, "utf-8");
+        const now = new Date();
+        const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const relDir = dirname(relative(ctx.cwd, absPath));
+        const fileBase = basename(absPath);
+        title =
+          relDir && relDir !== "."
+            ? `${relDir}/${fileBase}-${time}`
+            : `${fileBase}-${time}`;
+        sourceDescription = filePath;
+      } else {
+        // Picker mode: select a final agent response.
+        await ctx.waitForIdle?.();
+        const picked = await pickAgentEndMessage(ctx);
+        if (!picked) return; // cancelled or empty
+        content = picked;
+        title = buildNoteTitle(picked, new Date());
+        sourceDescription = "agent response";
       }
-
-      const content = readFileSync(absPath, "utf-8");
-
-      const now = new Date();
-      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      const relDir = dirname(relative(ctx.cwd, absPath));
-      const fileBase = basename(absPath);
-      const title =
-        relDir && relDir !== "."
-          ? `${relDir}/${fileBase}-${time}`
-          : `${fileBase}-${time}`;
 
       try {
         const noteId = createNote(instanceName, title, content);
@@ -509,12 +520,19 @@ export default function jotExtension(pi: ExtensionAPI) {
           "info",
         );
 
+        // Open the new note in browser.
+        if (baseUrl) {
+          await openJotUrl(ctx, `${baseUrl}/notes/${noteId}?view`);
+        } else {
+          ctx.ui.notify(`Instance "${instanceName}" has no URL — note created, not opened in browser`, "warning");
+        }
+
         pi.sendMessage(
           {
             customType: "jot-published",
-            content: `Published \`${filePath}\` → jot **${instanceName}** / ${noteId} ("${title}")`,
+            content: `Published \`${sourceDescription}\` → jot **${instanceName}** / ${noteId} ("${title}")`,
             display: true,
-            details: { absPath, instance: instanceName, noteId, title },
+            details: { instance: instanceName, noteId, title },
           },
           { triggerTurn: false },
         );

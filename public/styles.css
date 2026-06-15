@@ -599,4 +599,9 @@ input:focus, textarea:focus { border-color: var(--muted); }
   /* Public page doesn't need the fab/close, preview is always visible */
   .preview-stage.public { position: static; transform: none; min-height: auto; height: auto; }
   .preview-stage.public .preview-close-btn { display: none; }
+
+  /* View mode: preview always visible (no editor to toggle back to) */
+  .workspace--view .preview-stage { position: static; transform: none; min-height: 100vh; height: 100vh; }
+  .workspace--view .preview-close-btn { display: none; }
+  .workspace--view #previewFab { display: none !important; }
 }

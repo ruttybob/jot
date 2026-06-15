@@ -168,6 +168,42 @@ async function resolveCmuxCallerPane(): Promise<string | null> {
   return result;
 }
 
+/** Spawn a detached, fire-and-forget process. Resolves on start, rejects on spawn error. */
+function spawnDetached(cmd: string, args: string[]): Promise<void> {
+  return new Promise<void>((settle) => {
+    let settled = false;
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    const done = (err?: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (err) settle(Promise.reject(err));
+      else { child.unref(); settle(); }
+    };
+    child.once("error", done);
+    child.once("spawn", () => done());
+  });
+}
+
+/** Open a URL in cmux browser-surface (targeting pi's pane) or system browser. */
+async function openJotUrl(ctx: { ui: { notify(m: string, level?: string): void } }, url: string): Promise<void> {
+  const inCmux = process.env.CMUX_BUNDLE_ID === "com.cmuxterm.app";
+  try {
+    if (inCmux) {
+      const cmuxBin = process.env.CMUX_PI_CMUX_BIN || "cmux";
+      const pane = await resolveCmuxCallerPane();
+      const args = ["new-surface", "--type", "browser", "--url", url, "--focus", "true"];
+      if (pane) args.push("--pane", pane);
+      await spawnDetached(cmuxBin, args);
+    } else {
+      const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+      const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+      await spawnDetached(cmd, args);
+    }
+  } catch (err: any) {
+    ctx.ui.notify(`Failed to open browser: ${err.message}`, "error");
+  }
+}
+
 // ── jot note operations ─────────────────────────────────────────
 
 /**
@@ -419,15 +455,11 @@ export default function jotExtension(pi: ExtensionAPI) {
       const noteId = args.trim();
       const url = noteId ? `${baseUrl}/notes/${noteId}?view` : baseUrl;
 
-      try {
-        execFileSync("open", [url], { timeout: 5000 });
-        ctx.ui.notify(
-          `Opened ${instanceName}: ${noteId ? `note ${noteId}` : "home"}`,
-          "info",
-        );
-      } catch (err: any) {
-        ctx.ui.notify(`Failed to open: ${err.message}`, "error");
-      }
+      await openJotUrl(ctx, url);
+      ctx.ui.notify(
+        `Opened ${instanceName}: ${noteId ? `note ${noteId}` : "home"}`,
+        "info",
+      );
     },
   });
 }

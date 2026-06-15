@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getAgentEndMessages, buildNoteTitle } from "../../../extensions/jot/index.js";
+import {
+  getAgentEndMessages,
+  buildNoteTitle,
+  parseCmuxCallerPane,
+} from "../../../extensions/jot/index.js";
 
 // Helper: build a SessionMessageEntry.
 function msg(
@@ -109,5 +113,26 @@ describe("buildNoteTitle", () => {
   it("strip # даже при отступе перед заголовком", () => {
     const now = new Date("2026-06-15T22:51:00");
     expect(buildNoteTitle("   # Indented\nbody", now)).toBe("Indented — 22:51");
+  });
+});
+
+describe("parseCmuxCallerPane", () => {
+  it("достаёт caller.pane_ref из валидного JSON", () => {
+    const json = JSON.stringify({
+      caller: { pane_ref: "pane:27", surface_ref: "surface:40" },
+      focused: { pane_ref: "pane:10" },
+    });
+    expect(parseCmuxCallerPane(json)).toBe("pane:27");
+  });
+
+  it("возвращает null если caller отсутствует", () => {
+    expect(
+      parseCmuxCallerPane(JSON.stringify({ focused: { pane_ref: "pane:1" } })),
+    ).toBeNull();
+  });
+
+  it("возвращает null для битого JSON", () => {
+    expect(parseCmuxCallerPane("not json")).toBeNull();
+    expect(parseCmuxCallerPane("")).toBeNull();
   });
 });

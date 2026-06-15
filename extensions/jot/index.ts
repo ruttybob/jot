@@ -9,7 +9,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -121,6 +121,51 @@ function getActiveInstance(ctx: {
   sessionManager: any;
 }): string {
   return restoreInstanceFromSession(ctx) || loadGlobalInstance();
+}
+
+// ── cmux pane resolution ────────────────────────────────
+
+// Cached for process lifetime. Intentional — pane rarely moves mid-session.
+let cachedCmuxPane: string | null | undefined;
+
+/** Pure: extract caller.pane_ref from `cmux identify` JSON output. */
+export function parseCmuxCallerPane(identifyJson: string): string | null {
+  try {
+    const parsed = JSON.parse(identifyJson) as {
+      caller?: { pane_ref?: unknown };
+    };
+    const ref = parsed?.caller?.pane_ref;
+    return typeof ref === "string" && ref ? ref : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve the cmux pane where this process runs, via caller detection. */
+async function resolveCmuxCallerPane(): Promise<string | null> {
+  if (cachedCmuxPane !== undefined) return cachedCmuxPane;
+  const cmuxBin = process.env.CMUX_PI_CMUX_BIN || "cmux";
+  const result = await new Promise<string | null>((settle) => {
+    let stdout = "";
+    let settled = false;
+    const child = spawn(cmuxBin, ["identify"], {
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    child.stdout?.on("data", (c: Buffer) => {
+      stdout += c.toString();
+    });
+    // Node fires both `error` and `close` on spawn failure — settle once.
+    const done = (value: string | null) => {
+      if (!settled) {
+        settled = true;
+        settle(value);
+      }
+    };
+    child.once("error", () => done(null));
+    child.once("close", () => done(parseCmuxCallerPane(stdout)));
+  });
+  cachedCmuxPane = result;
+  return result;
 }
 
 // ── jot note operations ─────────────────────────────────────────

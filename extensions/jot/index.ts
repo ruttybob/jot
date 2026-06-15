@@ -287,7 +287,7 @@ export function getAgentEndMessages(branch: any[]): AgentEndMessage[] {
     );
     if (textBlocks.length === 0) continue;
 
-    const markdown = textBlocks.map((c) => c.text).join("\n\n");
+    const markdown = textBlocks.map((c: { text: string }) => c.text).join("\n\n");
     const firstLine = firstMeaningfulLine(markdown);
     const preview = firstLine.trimStart().replace(/^#+\s*/, "").slice(0, 80);
     messages.push({ index: messageIndex, markdown, preview });

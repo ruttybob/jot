@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "@earendil-works/pi-coding-agent": ["./tests/stubs/@earendil-works/pi-coding-agent.ts"],
+      "@earendil-works/pi-tui": ["./tests/stubs/@earendil-works/pi-tui.ts"]
+    }
+  },
+  "include": ["tests/**/*.ts", "extensions/**/*.ts"]
+}

@@ -336,6 +336,21 @@ function frameBox(lines: string[], width: number, theme: Theme, title: string): 
 }
 
 /**
+ * Build a SelectList theme object that satisfies the full render contract.
+ * SelectList.render calls `scrollInfo` (scroll indicator when items exceed
+ * maxVisible) and `noMatch` (empty filter); a theme missing these methods
+ * crashed pi with `TypeError: this.theme.scrollInfo is not a function`.
+ */
+export function selectListTheme(theme: Theme) {
+  return {
+    selectedText: (t: string) => theme.bg("selectedBg", theme.bold(t)),
+    description: (t: string) => theme.fg("muted", t),
+    scrollInfo: (t: string) => theme.fg("dim", t),
+    noMatch: (t: string) => theme.fg("warning", t),
+  };
+}
+
+/**
  * Show overlay picker of final agent responses. Returns selected markdown or null.
  * If only one message, returns it directly (no picker).
  */
@@ -369,11 +384,7 @@ async function pickAgentEndMessage(ctx: {
       const container = new Container();
       container.addChild(new Text("", 0));
 
-      const selectList = new SelectList(items, Math.min(items.length, 10), {
-        selectedPrefix: (text: string) => theme.fg("accent", text),
-        selectedText: (text: string) => theme.fg("accent", text),
-        description: (text: string) => theme.fg("muted", text),
-      });
+      const selectList = new SelectList(items, Math.min(items.length, 10), selectListTheme(theme));
 
       // Start with the last (most recent) item selected.
       selectList.setSelectedIndex(items.length - 1);

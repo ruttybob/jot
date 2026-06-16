@@ -3,7 +3,9 @@ import {
   getAgentEndMessages,
   buildNoteTitle,
   parseCmuxCallerPane,
+  selectListTheme,
 } from "../../../extensions/jot/index.js";
+import type { Theme } from "@earendil-works/pi-tui";
 
 // Helper: build a SessionMessageEntry.
 function msg(
@@ -113,6 +115,35 @@ describe("buildNoteTitle", () => {
   it("strip # даже при отступе перед заголовком", () => {
     const now = new Date("2026-06-15T22:51:00");
     expect(buildNoteTitle("   # Indented\nbody", now)).toBe("Indented — 22:51");
+  });
+});
+
+// Minimal Theme mock: every method returns a tagged string so we can assert it was used.
+function mockTheme(): Theme {
+  return {
+    fg: (k: string, t: string) => `<fg:${k}>${t}</fg>`,
+    bg: (k: string, t: string) => `<bg:${k}>${t}</bg>`,
+    bold: (t: string) => `<b>${t}</b>`,
+  } as unknown as Theme;
+}
+
+describe("selectListTheme", () => {
+  // Regression: SelectList.render calls theme.scrollInfo when items exceed
+  // maxVisible (scroll indicator) and theme.noMatch on empty filter. A theme
+  // missing these methods crashed pi with `TypeError: ... is not a function`.
+  it("экспортирует все методы контракта SelectList как functions", () => {
+    const t = selectListTheme(mockTheme());
+    for (const key of ["scrollInfo", "noMatch", "selectedText", "description"] as const) {
+      expect(typeof t[key]).toBe("function");
+    }
+  });
+
+  it("scrollInfo возвращает строку (вызывается при скролле — был краш)", () => {
+    expect(typeof selectListTheme(mockTheme()).scrollInfo("(1/5)")).toBe("string");
+  });
+
+  it("noMatch возвращает строку (вызывается при пустом фильтре)", () => {
+    expect(typeof selectListTheme(mockTheme()).noMatch("none")).toBe("string");
   });
 });
 

@@ -62,6 +62,12 @@ function isShareInstance(instance) {
   return Boolean(instance.shareId && !instance.token);
 }
 
+// Print note body exactly as stored, with a single trailing newline.
+// Used for --raw output that users may redirect to a file or pipe.
+function outputRaw(text) {
+  process.stdout.write(text.endsWith("\n") ? text : text + "\n");
+}
+
 const args = process.argv.slice(2);
 const command = args[0];
 
@@ -182,8 +188,13 @@ if (isShareInstance(instance)) {
 
   switch (subCommand) {
     case "read": {
+      const raw = args.includes("--raw");
       const payload = await request(instance, "GET", `/api/share/${sid}/note`);
       const note = payload.note;
+      if (raw) {
+        outputRaw(note.markdown);
+        break;
+      }
       console.log(`# ${note.title}`);
       console.log(`# id: ${note.id}`);
       console.log(`# updated: ${note.updatedAt}`);
@@ -275,14 +286,15 @@ switch (subCommand) {
   }
 
   case "read": {
-    const noteId = args[2];
+    const noteId = args[2] && !args[2].startsWith("--") ? args[2] : null;
     if (!noteId) {
-      console.error("Usage: jot <instance> read <id> [--offset=N] [--limit=M]");
+      console.error("Usage: jot <instance> read <id> [--offset=N] [--limit=M] [--raw]");
       process.exit(1);
     }
 
     const offsetArg = args.find((a) => a.startsWith("--offset="));
     const limitArg = args.find((a) => a.startsWith("--limit="));
+    const raw = args.includes("--raw");
     const offset = offsetArg ? offsetArg.split("=")[1] : null;
     const limit = limitArg ? limitArg.split("=")[1] : null;
 
@@ -296,28 +308,36 @@ switch (subCommand) {
     const note = payload.note;
 
     if (note.content !== undefined) {
-      console.log(`# ${note.title}`);
-      console.log(`# id: ${note.id}`);
-      console.log(`# lines: ${note.offset}-${note.offset + note.limit - 1} of ${note.totalLines}${note.remaining > 0 ? ` (${note.remaining} more)` : ""}`);
-      console.log();
-      console.log(note.content);
-    } else {
-      console.log(`# ${note.title}`);
-      console.log(`# id: ${note.id}`);
-      console.log(`# updated: ${note.updatedAt}`);
-      console.log(`# share: ${note.shareUrl}`);
-      console.log();
-      console.log(note.markdown);
-
-      if (payload.threads && payload.threads.length > 0) {
+      if (raw) {
+        outputRaw(note.content);
+      } else {
+        console.log(`# ${note.title}`);
+        console.log(`# id: ${note.id}`);
+        console.log(`# lines: ${note.offset}-${note.offset + note.limit - 1} of ${note.totalLines}${note.remaining > 0 ? ` (${note.remaining} more)` : ""}`);
         console.log();
-        console.log("--- Comments ---");
-        for (const thread of payload.threads) {
-          const anchor = thread.anchor?.quote ? `"${thread.anchor.quote.slice(0, 60)}"` : "(no anchor)";
+        console.log(note.content);
+      }
+    } else {
+      if (raw) {
+        outputRaw(note.markdown);
+      } else {
+        console.log(`# ${note.title}`);
+        console.log(`# id: ${note.id}`);
+        console.log(`# updated: ${note.updatedAt}`);
+        console.log(`# share: ${note.shareUrl}`);
+        console.log();
+        console.log(note.markdown);
+
+        if (payload.threads && payload.threads.length > 0) {
           console.log();
-          console.log(`Thread ${thread.id} on ${anchor}${thread.resolved ? " [resolved]" : ""}`);
-          for (const msg of thread.messages) {
-            console.log(`  [${msg.id}] ${msg.authorName} (${msg.updatedAt}): ${msg.body}`);
+          console.log("--- Comments ---");
+          for (const thread of payload.threads) {
+            const anchor = thread.anchor?.quote ? `"${thread.anchor.quote.slice(0, 60)}"` : "(no anchor)";
+            console.log();
+            console.log(`Thread ${thread.id} on ${anchor}${thread.resolved ? " [resolved]" : ""}`);
+            for (const msg of thread.messages) {
+              console.log(`  [${msg.id}] ${msg.authorName} (${msg.updatedAt}): ${msg.body}`);
+            }
           }
         }
       }
@@ -562,7 +582,7 @@ Instance management:
 Owner commands:
   jot <instance> list                     List notes
   jot <instance> search <query>           Search notes
-  jot <instance> read <id>                Read a note with comments
+  jot <instance> read <id> [--raw]         Read a note (+ comments); --raw = body only
   jot <instance> read-threads <id>         Read only comments (no note body)
   jot <instance> create [title]           Create a new note
   jot <instance> share <id> [access]      Get/set share access (none|view|comment|edit)
@@ -579,7 +599,7 @@ Owner commands:
   jot <instance> delete <id>               Delete a note
 
 Shared note commands:
-  jot <instance> read                     Read the shared note
+  jot <instance> read [--raw]             Read the shared note; --raw = body only
   jot <instance> edit '<edits>'           Edit (if edit access)
   jot <instance> comment <quote> <body>   Comment on text
   jot <instance> reply <tid> <mid> <body> Reply to a specific message

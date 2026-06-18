@@ -32,6 +32,7 @@ jot unregister <name>                            # remove a registered instance
 jot <inst> list                                  # list all notes: id<TAB>title<TAB>updated[  ][locked]
 jot <inst> search "query"                        # search notes by text
 jot <inst> read <id>                             # read full note body + comments (thread/message IDs)
+jot <inst> read <id> --raw                       # body only — no meta header, no comments (pipe to file)
 jot <inst> read <id> --offset=N --limit=M        # paginate a large note (numbered lines, saves context)
 jot <inst> read-threads <id>                     # read only comments (no note body, minimal context)
 jot <inst> create "Title"                        # create note → prints "id<TAB>title"
@@ -52,6 +53,14 @@ jot <inst> delete-thread <id> <tid>              # delete thread entirely
 # Comments
 jot <inst> edit-comment <id> <mid> "new body"
 jot <inst> delete-comment <id> <mid>
+
+# Shared instance (registered via `register <name> <shareUrl>`)
+jot <inst> read                              # read shared note + comments
+jot <inst> read --raw                        # body only (no meta, no comments)
+jot <inst> edit '<json edits>'               # edit (requires edit access)
+jot <inst> comment "quoted text" "body"     # comment (no note id needed)
+jot <inst> reply <tid> <mid> "body"         # reply in thread
+jot <inst> comment "quote" "body" --name="My Name"  # override display name (default: "Agent")
 ```
 
 ## Update from File
@@ -68,6 +77,22 @@ CONTENT=$(cat <file>)
 # 3. Update note body
 jot <inst> update "$ID" markdown "$CONTENT"
 ```
+
+## Round-trip: dump → edit → push
+
+`read --raw` outputs the note body with no meta header and exactly one trailing newline — ideal for redirecting to a file, editing, and pushing back:
+
+```bash
+# 1. Dump body to file
+jot <inst> read <id> --raw > /tmp/note.md
+
+# 2. Edit /tmp/note.md freely (no meta lines to strip)
+
+# 3. Push back (title is preserved)
+jot <inst> update <id> markdown "$(cat /tmp/note.md)"
+```
+
+For a slice of a large note, combine with pagination: `read <id> --offset=N --limit=M --raw`.
 
 ## Multiline Content
 
@@ -96,6 +121,7 @@ EOF
 
 1. **Read first** — `read` before editing/commenting to get current content and IDs.
    Use `read-threads` instead when you only need thread/message IDs (e.g., before `reply`, `resolve`, `edit-comment`). This avoids loading the full note body into context.
+   Use `read <id> --raw` when you need only the body (no meta header, no comments) — e.g. before `update markdown`, to grep/pipe, or to dump to a file.
    For large notes, use `read <id> --offset=N --limit=M` to read a slice.
 2. **Edit precisely** — smallest unique `oldText`, no large surrounding context.
 3. **Comment on specifics** — quoted text must exactly match a span in the note.
